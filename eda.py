@@ -1,8 +1,7 @@
 
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-import plotly.express as px
-from ploty_template import custom_template, plot_title
+from ploty_template import plot_title
 from wordcloud import WordCloud, STOPWORDS
 import numpy as np
 import pandas as pd
@@ -11,7 +10,6 @@ from PIL import Image
 from bs4 import BeautifulSoup
 from itertools import chain
 import re
-import string
 import unicodedata
 # import contractions
 from sklearn.feature_extraction.text import CountVectorizer
@@ -163,8 +161,11 @@ class Documents:
         sum_words = bag_of_words.sum(axis=0)
 
         min1 = int(min_freq*len(corpus))
-        wordsets = [frozenset(document.split(" ")) for document in corpus]
-        
+        if ngram == 1:
+            wordsets = [frozenset(document.split(" ")) for document in corpus]
+        else:
+            wordsets = [document for document in corpus]
+
         words_freq = []
         for word, idx in vec.vocabulary_.items():
             wrd_doc_cnt = sum(1 for s in wordsets if word in s)
@@ -213,25 +214,31 @@ class Documents:
                 fig2.update_layout(template="plotly_white", title_text=plot_title("Rare Words"))
                 fig2.show()
             else:
-                temp_df1 = self.__get_ngrams(self.processed_df[text_column], nwords=nwords, min_freq=min_freq,
+                temp_df1 = self.__get_ngrams(self.processed_df[cleaned_text], nwords=nwords, min_freq=min_freq,
                                             ngram=ng, most_frequent_first=True)
                 temp_df1 = temp_df1.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
                 fig1 = go.Figure(data=[go.Bar(x=temp_df1['Phrase'], y=temp_df1['Count'])])
                 fig1.update_layout(template="plotly_white", title_text=plot_title("Frequent Phrases"))
                 fig1.show()
-                temp_df2 = self.__get_ngrams(self.processed_df[text_column], nwords=nwords, min_freq=min_freq,
+                temp_df2 = self.__get_ngrams(self.processed_df[cleaned_text], nwords=nwords, min_freq=min_freq,
                                             ngram=ng, most_frequent_first=False)
                 temp_df2 = temp_df2.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
                 fig2 = go.Figure(data=[go.Bar(x=temp_df2['Phrase'], y=temp_df2['Count'])])
                 fig2.update_layout(template="plotly_white",title_text=plot_title("Rare Phrases"))
                 fig2.show()
 
+    def create_wordcloud(self):
+        cleaned_text = str(self.text_column) + "_clean"
+        if not self.clean_status:
+            self.prep_docs(return_df=False)
+            
         # Import image to np.array & Generate word cloud
         mask = np.array(Image.open(UTIL_PATH + "/wordcloud_mask/" + "comment.png"))
         text = " ".join(self.processed_df[cleaned_text].tolist())
         wordcloud = WordCloud(width=400, height=200, random_state=1, background_color='white', colormap='tab10', collocations=False,
                               stopwords=self.stop_words, mask=mask).generate(text)
         self.__plot_cloud(wordcloud)
+
 
 
 

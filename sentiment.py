@@ -1,11 +1,9 @@
 
-import matplotlib.pyplot as plt
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-import plotly.express as px
-from ploty_template import custom_template, plot_title
-import numpy as np
+from ploty_template import plot_title
 import pandas as pd
+from eda import Documents
 # import swifter
 
 global UTIL_PATH
@@ -13,7 +11,7 @@ UTIL_PATH = "utils"
 
 class Sentiment:
     def __init__(self, documents_object=None, method=None, lexicon=None):
-        if isinstance(documents, Documents):
+        if isinstance(documents_object, Documents):
             self.doc_obj = documents_object
             self.raw_df = documents_object.raw_df
             if documents_object.clean_status:
@@ -146,7 +144,7 @@ class Sentiment:
             fig = make_subplots(rows=3, cols=1, specs=[[{}], [{"rowspan": 2}], [None]], 
                                 shared_xaxes=True, vertical_spacing=0.00)
             fig.add_trace(go.Scatter(x=tdf[X_variable], y=tdf['sent_scr'], mode='lines+markers',
-                                        line_shape='spline', name='Sentiment Score'), row=1, col=1)
+                                    line_shape='spline', name='Sentiment Score'), row=1, col=1)
             fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['pos_shr'].round(1), name='Positive'), row=2, col=1)
             fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['neg_shr'].round(1), name='Negative'), row=2, col=1)
             fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['unc_shr'].round(1), name='Uncertainty'), row=2, col=1)
@@ -155,7 +153,7 @@ class Sentiment:
             fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['sup_shr'].round(1), name='Superfluous'), row=2, col=1)
             fig.update_layout(barmode='stack', yaxis_visible=False, yaxis_showticklabels=False,
                               yaxis2_visible=False, yaxis2_showticklabels=False, template="plotly_white",
-                                title_text=plot_title("Sentiment Analysis"))
+                              title_text=plot_title("Sentiment Analysis"))
             fig.show()
     
     def __generate_sentiment(self):

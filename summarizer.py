@@ -1,7 +1,5 @@
 
 from gensim.summarization import summarize, keywords
-import numpy as np
-import pandas as pd
 
 class Summary:
     def __init__(self, documents_object=None, method=None, summary_ratio=None, keyword_ratio=None):
