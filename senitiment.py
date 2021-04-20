@@ -2,6 +2,7 @@
 import matplotlib.pyplot as plt
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+import plotly.express as px
 from ploty_template import custom_template, plot_title
 import numpy as np
 import pandas as pd
@@ -135,33 +136,25 @@ class Sentiment:
             avg_sup = round(temp_df['sup_shr'].mean(), 1)
             labels = ['Positive', 'Negative', 'Uncertainty', 'Litigious', 'Constraining', 'Superfluous']
             values = [avg_pos, avg_neg, avg_unc, avg_lit, avg_con, avg_sup]
-            fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.4,
-                            title=plot_title("Overall Sentiment Score: " + str(avg_sent)),
-                            hoverinfo="label+percent+name", template=custom_template)])
+            fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.4, hoverinfo="label+percent+name")])
+            fig.update_layout(template="plotly_white", title_text=plot_title("Overall Sentiment Score: " + str(avg_sent)))
             fig.show()
         else:
             tdf = temp_df[[X_variable, 'sent_scr', 'pos_shr', 'neg_shr', 'unc_shr',
                             'lit_shr', 'con_shr', 'sup_shr']].groupby([X_variable]).mean()
-            tdf.sort_index(inplace=True).reset_index(inplace=True)
+            tdf = tdf.sort_index().reset_index()
             fig = make_subplots(rows=3, cols=1, specs=[[{}], [{"rowspan": 2}], [None]], 
                                 shared_xaxes=True, vertical_spacing=0.00)
             fig.add_trace(go.Scatter(x=tdf[X_variable], y=tdf['sent_scr'], mode='lines+markers',
-                                        line_shape='spline', name='Sentiment Score', 
-                                        template=custom_template), row=1, col=1)
-            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['pos_shr'].round(1), name='Positive', 
-                                template=custom_template), row=2, col=1)
-            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['neg_shr'].round(1), name='Negative', 
-                                template=custom_template), row=2, col=1)
-            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['unc_shr'].round(1), name='Uncertainty', 
-                                template=custom_template), row=2, col=1)
-            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['lit_shr'].round(1), name='Litigious', 
-                                template=custom_template), row=2, col=1)
-            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['con_shr'].round(1), name='Constraining', 
-                                template=custom_template), row=2, col=1)
-            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['sup_shr'].round(1), name='Superfluous', 
-                                template=custom_template), row=2, col=1)
+                                        line_shape='spline', name='Sentiment Score'), row=1, col=1)
+            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['pos_shr'].round(1), name='Positive'), row=2, col=1)
+            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['neg_shr'].round(1), name='Negative'), row=2, col=1)
+            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['unc_shr'].round(1), name='Uncertainty'), row=2, col=1)
+            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['lit_shr'].round(1), name='Litigious'), row=2, col=1)
+            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['con_shr'].round(1), name='Constraining'), row=2, col=1)
+            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['sup_shr'].round(1), name='Superfluous'), row=2, col=1)
             fig.update_layout(barmode='stack', yaxis_visible=False, yaxis_showticklabels=False,
-                                yaxis2_visible=False, yaxis2_showticklabels=False,
+                              yaxis2_visible=False, yaxis2_showticklabels=False, template="plotly_white",
                                 title_text=plot_title("Sentiment Analysis"))
             fig.show()
     

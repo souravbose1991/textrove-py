@@ -21,7 +21,6 @@ custom_template = {
     )
 }
 
-
 def plot_title(title, subtitle=None, subtitle_font_size=14):
     title = f'<b>{title}</b>'
     if not subtitle:

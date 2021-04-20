@@ -1,6 +1,8 @@
 
 import matplotlib.pyplot as plt
-from ploty_template import custom_template
+import plotly.graph_objects as go
+import plotly.express as px
+from ploty_template import custom_template, plot_title
 from wordcloud import WordCloud, STOPWORDS
 import numpy as np
 import pandas as pd
@@ -14,6 +16,7 @@ import unicodedata
 # import contractions
 from sklearn.feature_extraction.text import CountVectorizer
 from nltk.corpus import stopwords
+from nltk.tokenize import RegexpTokenizer
 
 # Spacy
 import spacy
@@ -30,7 +33,7 @@ stop2 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
 stop3 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
          for x in open(UTIL_PATH+"/stopwords/"+"StopWords_DatesandNumbers.txt", "r")]
 
-STOP_WORD = list(set(stopwords.words("english") + STOPWORDS + stop1 + stop2 + stop3))
+STOP_WORD = list(set(list(stopwords.words("english")) + list(STOPWORDS) + stop1 + stop2 + stop3))
 
 
 class Documents:
@@ -199,21 +202,29 @@ class Documents:
             if ng == 1:
                 temp_df1 = self.__get_ngrams(self.processed_df[cleaned_text], nwords=nwords, min_freq=min_freq,
                                             ngram=ng, most_frequent_first=True)
-                temp_df1.groupby('Phrase').sum()['Count'].sort_values(ascending=False).iplot(
-                    kind='bar', yTitle='Count', linecolor='black', title='Frequent Words')
+                temp_df1 = temp_df1.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
+                fig1 = go.Figure(data=[go.bar(x=temp_df1['Phrase'], y=temp_df1['Count'])])
+                fig1.update_layout(template="plotly_white", title_text=plot_title("Frequent Words"))
+                fig1.show()
                 temp_df2 = self.__get_ngrams(self.processed_df[cleaned_text], nwords=nwords, min_freq=min_freq,
                                             ngram=ng, most_frequent_first=False)
-                temp_df2.groupby('Phrase').sum()['Count'].sort_values(ascending=False).iplot(
-                    kind='bar', yTitle='Count', linecolor='black', title='Rare Words')
+                temp_df2 = temp_df2.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
+                fig2 = go.Figure(data=[go.bar(x=temp_df2['Phrase'], y=temp_df2['Count'])])
+                fig1.update_layout(template="plotly_white", title_text=plot_title("Rare Words"))
+                fig2.show()
             else:
                 temp_df1 = self.__get_ngrams(self.processed_df[text_column], nwords=nwords, min_freq=min_freq,
                                             ngram=ng, most_frequent_first=True)
-                temp_df1.groupby('Phrase').sum()['Count'].sort_values(ascending=False).iplot(
-                    kind='bar', yTitle='Count', linecolor='black', title='Frequent Phrases')
+                temp_df1 = temp_df1.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
+                fig1 = go.Figure(data=[go.bar(x=temp_df1['Phrase'], y=temp_df1['Count'])])
+                fig1.update_layout(template="plotly_white", title_text=plot_title("Frequent Phrases"))
+                fig1.show()
                 temp_df2 = self.__get_ngrams(self.processed_df[text_column], nwords=nwords, min_freq=min_freq,
                                             ngram=ng, most_frequent_first=False)
-                temp_df2.groupby('Phrase').sum()['Count'].sort_values(ascending=False).iplot(
-                    kind='bar', yTitle='Count', linecolor='black', title='Rare Phrases')
+                temp_df2 = temp_df2.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
+                fig2 = go.Figure(data=[go.bar(x=temp_df2['Phrase'], y=temp_df2['Count'])])
+                fig1.update_layout(template="plotly_white",title_text=plot_title("Rare Phrases"))
+                fig2.show()
 
         # Import image to np.array & Generate word cloud
         mask = np.array(Image.open(UTIL_PATH + "/wordcloud_mask/" + "comment.png"))
