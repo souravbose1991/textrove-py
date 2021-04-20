@@ -180,7 +180,7 @@ class Documents:
 
     def __plot_cloud(self, wordcloud):
         # Set figure size
-        plt.figure(figsize=(40, 30))
+        plt.figure(figsize=(40, 20))
         # Display image
         plt.imshow(wordcloud)
         # No axis details
@@ -203,33 +203,33 @@ class Documents:
                 temp_df1 = self.__get_ngrams(self.processed_df[cleaned_text], nwords=nwords, min_freq=min_freq,
                                             ngram=ng, most_frequent_first=True)
                 temp_df1 = temp_df1.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
-                fig1 = go.Figure(data=[go.bar(x=temp_df1['Phrase'], y=temp_df1['Count'])])
+                fig1 = go.Figure(data=[go.Bar(x=temp_df1['Phrase'], y=temp_df1['Count'])])
                 fig1.update_layout(template="plotly_white", title_text=plot_title("Frequent Words"))
                 fig1.show()
                 temp_df2 = self.__get_ngrams(self.processed_df[cleaned_text], nwords=nwords, min_freq=min_freq,
                                             ngram=ng, most_frequent_first=False)
                 temp_df2 = temp_df2.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
-                fig2 = go.Figure(data=[go.bar(x=temp_df2['Phrase'], y=temp_df2['Count'])])
-                fig1.update_layout(template="plotly_white", title_text=plot_title("Rare Words"))
+                fig2 = go.Figure(data=[go.Bar(x=temp_df2['Phrase'], y=temp_df2['Count'])])
+                fig2.update_layout(template="plotly_white", title_text=plot_title("Rare Words"))
                 fig2.show()
             else:
                 temp_df1 = self.__get_ngrams(self.processed_df[text_column], nwords=nwords, min_freq=min_freq,
                                             ngram=ng, most_frequent_first=True)
                 temp_df1 = temp_df1.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
-                fig1 = go.Figure(data=[go.bar(x=temp_df1['Phrase'], y=temp_df1['Count'])])
+                fig1 = go.Figure(data=[go.Bar(x=temp_df1['Phrase'], y=temp_df1['Count'])])
                 fig1.update_layout(template="plotly_white", title_text=plot_title("Frequent Phrases"))
                 fig1.show()
                 temp_df2 = self.__get_ngrams(self.processed_df[text_column], nwords=nwords, min_freq=min_freq,
                                             ngram=ng, most_frequent_first=False)
                 temp_df2 = temp_df2.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
-                fig2 = go.Figure(data=[go.bar(x=temp_df2['Phrase'], y=temp_df2['Count'])])
-                fig1.update_layout(template="plotly_white",title_text=plot_title("Rare Phrases"))
+                fig2 = go.Figure(data=[go.Bar(x=temp_df2['Phrase'], y=temp_df2['Count'])])
+                fig2.update_layout(template="plotly_white",title_text=plot_title("Rare Phrases"))
                 fig2.show()
 
         # Import image to np.array & Generate word cloud
         mask = np.array(Image.open(UTIL_PATH + "/wordcloud_mask/" + "comment.png"))
         text = " ".join(self.processed_df[cleaned_text].tolist())
-        wordcloud = WordCloud(width=3000, height=2000, random_state=1, background_color='white', colormap='Set2', collocations=False,
+        wordcloud = WordCloud(width=400, height=200, random_state=1, background_color='white', colormap='tab10', collocations=False,
                               stopwords=self.stop_words, mask=mask).generate(text)
         self.__plot_cloud(wordcloud)
 
