@@ -1,8 +1,16 @@
 
 from gensim.summarization import summarize, keywords
 
+# # Spacy
+# import spacy
+# nlp = spacy.load('en_core_web_md')
+# from spacy.lang.en.stop_words import STOP_WORDS
+# from string import punctuation
+# from collections import Counter
+# from heapq import nlargest
+
 class Summary:
-    def __init__(self, documents_object=None, method=None, summary_ratio=None, keyword_ratio=None):
+    def __init__(self, documents_object=None, summary_ratio=None):
         if isinstance(documents, Documents):
             self.doc_obj = documents_object
             self.raw_df = documents_object.raw_df

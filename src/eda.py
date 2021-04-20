@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 from itertools import chain
 import re
 import unicodedata
+from pathlib import Path
 # import contractions
 from sklearn.feature_extraction.text import CountVectorizer
 from nltk.corpus import stopwords
@@ -21,15 +22,15 @@ import spacy
 nlp = spacy.load('en_core_web_md')
 
 global UTIL_PATH, STOP_WORD
-UTIL_PATH = "utils"
+UTIL_PATH = str(Path("../utils").resolve())
 
 ################## Stopwords list ##################
 stop1 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
-         for x in open(UTIL_PATH+"/stopwords/"+"StopWords_Generic.txt", "r")]
+         for x in open(UTIL_PATH +"/stopwords/"+"StopWords_Generic.txt", "r")]
 stop2 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
-         for x in open(UTIL_PATH+"/stopwords/"+"StopWords_GenericLong.txt", "r")]
+         for x in open(UTIL_PATH + "/stopwords/"+"StopWords_GenericLong.txt", "r")]
 stop3 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
-         for x in open(UTIL_PATH+"/stopwords/"+"StopWords_DatesandNumbers.txt", "r")]
+         for x in open(UTIL_PATH + "/stopwords/"+"StopWords_DatesandNumbers.txt", "r")]
 
 STOP_WORD = list(set(list(stopwords.words("english")) + list(STOPWORDS) + stop1 + stop2 + stop3))
 

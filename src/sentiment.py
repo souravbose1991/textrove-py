@@ -3,12 +3,13 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 from ploty_template import plot_title
 import pandas as pd
+from pathlib import Path
 from eda import Documents
 from sklearn.feature_extraction.text import CountVectorizer
 # import swifter
 
 global UTIL_PATH
-UTIL_PATH = "utils"
+UTIL_PATH = str(Path("../utils").resolve())
 
 class Sentiment:
     def __init__(self, documents_object=None, method=None, lexicon=None):
@@ -146,12 +147,12 @@ class Sentiment:
                                 shared_xaxes=True, vertical_spacing=0.00)
             fig.add_trace(go.Scatter(x=tdf[X_variable], y=tdf['sent_scr'], mode='lines+markers',
                                     line_shape='spline', name='Sentiment Score'), row=1, col=1)
-            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['pos_shr'].round(1), name='Positive'), row=2, col=1)
-            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['neg_shr'].round(1), name='Negative'), row=2, col=1)
-            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['unc_shr'].round(1), name='Uncertainty'), row=2, col=1)
-            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['lit_shr'].round(1), name='Litigious'), row=2, col=1)
-            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['con_shr'].round(1), name='Constraining'), row=2, col=1)
-            fig.add_trace(go.bar(x=tdf[X_variable], y=tdf['sup_shr'].round(1), name='Superfluous'), row=2, col=1)
+            fig.add_trace(go.Bar(x=tdf[X_variable], y=tdf['pos_shr'].round(1), name='Positive'), row=2, col=1)
+            fig.add_trace(go.Bar(x=tdf[X_variable], y=tdf['neg_shr'].round(1), name='Negative'), row=2, col=1)
+            fig.add_trace(go.Bar(x=tdf[X_variable], y=tdf['unc_shr'].round(1), name='Uncertainty'), row=2, col=1)
+            fig.add_trace(go.Bar(x=tdf[X_variable], y=tdf['lit_shr'].round(1), name='Litigious'), row=2, col=1)
+            fig.add_trace(go.Bar(x=tdf[X_variable], y=tdf['con_shr'].round(1), name='Constraining'), row=2, col=1)
+            fig.add_trace(go.Bar(x=tdf[X_variable], y=tdf['sup_shr'].round(1), name='Superfluous'), row=2, col=1)
             fig.update_layout(barmode='stack', yaxis_visible=False, yaxis_showticklabels=False,
                               yaxis2_visible=False, yaxis2_showticklabels=False, template="plotly_white",
                               title_text=plot_title("Sentiment Analysis"))
