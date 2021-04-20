@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 from ploty_template import plot_title
 import pandas as pd
 from eda import Documents
+from sklearn.feature_extraction.text import CountVectorizer
 # import swifter
 
 global UTIL_PATH
@@ -163,7 +164,7 @@ class Sentiment:
                 loughran_list = self.__load_loughran()
                 self.lexi_dict['Positive'] = loughran_list[0]
                 self.lexi_dict['Negative'] = loughran_list[1]
-                temp_df = temp_df.apply(self.__sent_loughran(loughran_list=loughran_list), axis=1)
+                temp_df = temp_df.apply(lambda x: self.__sent_loughran(x, loughran_list=loughran_list), axis=1)
         self.processed_df = temp_df
         return temp_df
 
@@ -191,24 +192,27 @@ class Sentiment:
         pos_tdf = pd.DataFrame(pos_words_freq[0:min(len(pos_words_freq), 10)], columns=['Words', 'Weight'])
         neg_tdf = pd.DataFrame(neg_words_freq[max(len(neg_words_freq)-10, 0):len(neg_words_freq)], columns=['Words', 'Weight'])
         tdf = pos_tdf.append(neg_tdf, ignore_index=True)
+        tdf = tdf.sort_values(by='Weight', ascending=True)
         return tdf
 
     def __get_word_sentiment(self, temp_df, min_freq=0.05, X_variable=None, lexi_dict=None):
-        tdf_list= []
+        tdf_list = []
+        cat_list = []
         if X_variable is None:
             tdf = self.__generate_word_sentiment(temp_df=temp_df, min_freq=min_freq, lexi_dict=lexi_dict)
             tdf_list.append(tdf)
         else:
             X_variable_uniq = temp_df[X_variable].unique().tolist()
             for cat in X_variable_uniq:
-                # Filter the data frame by this category in X_variable
-                # call the funstion to get good / bad words and store in a list
-                pass
-        return tdf_list
+                temp_df_t = temp_df.loc[temp_df[X_variable] == cat]
+                tdf = self.__generate_word_sentiment(temp_df=temp_df_t, min_freq=min_freq, lexi_dict=lexi_dict)
+                tdf_list.append(tdf)
+                cat_list.append(cat)
+        return (tdf_list, cat_list)
 
-    def plot_sentiment(self, X_variable=None, return_df=True):
+    def plot_sentiment(self, X_variable=None, return_df=False):
         temp_df = self.__generate_sentiment()
-        if X_variable not in temp_df.columns:
+        if (X_variable not in temp_df.columns and X_variable is not None):
             raise ValueError("Provide proper variable name as X-Category.")
         if self.sent_method == 'lexical':
             if self.sent_lexicon == 'loughran':
@@ -225,11 +229,19 @@ class Sentiment:
                 temp_df = new_df
             else:
                 raise ValueError("Provide a DataFrame with " + cleaned_text + " column in it.")
-        tdf_list = self.__get_word_sentiment(temp_df=temp_df, min_freq=0.05, X_variable=X_variable, 
-                                            lexi_dict=self.lexi_dict)
-        for item in tdf_list:
-            # plot each with a header in plotly
-            pass
+        tdf_list, cat_list = self.__get_word_sentiment(temp_df=temp_df, min_freq=0.05, X_variable=X_variable, 
+                                                        lexi_dict=self.lexi_dict)
+        for i in range(0, len(tdf_list)):
+            item = tdf_list[i]
+            clrs = ["darkred" if (x < 0) else "darkgreen" for x in item['Weight']]
+            fig1 = go.Figure(go.Bar(x=item['Weight'], y=item['Words'], orientation='h', marker=dict(color=clrs)))
+            if X_variable is None:
+                fig1.update_layout(template="plotly_white",title_text=plot_title("Overall Word-Sentiment"))
+            else:
+                fig1.update_layout(template="plotly_white", 
+                title_text=plot_title(title = "Word-Sentiment", subtitle = str(X_variable) + " = " + str(cat_list[i])))
+            fig1.show()
+            
 
 
 
