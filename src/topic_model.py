@@ -28,11 +28,11 @@ from gensim.models import ldaseqmodel
 from gensim.corpora import Dictionary, bleicorpus
 from gensim.matutils import hellinger
 
-from wordcloud import WordCloud, STOPWORDS
+from wordcloud import STOPWORDS
 from nltk.corpus import stopwords
 
 global UTIL_PATH, STOP_WORD
-UTIL_PATH = "utils"
+UTIL_PATH = str(Path("../utils").resolve())
 
 ################## Stopwords list ##################
 stop1 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
@@ -42,7 +42,7 @@ stop2 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
 stop3 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
          for x in open(UTIL_PATH+"/stopwords/"+"StopWords_DatesandNumbers.txt", "r")]
 
-STOP_WORD = list(set(stopwords.words("english") + STOPWORDS + stop1 + stop2 + stop3))
+STOP_WORD = list(set(list(stopwords.words("english")) + list(STOPWORDS) + stop1 + stop2 + stop3))
 
 
 #Spacy
@@ -68,20 +68,20 @@ STOP_WORD = list(set(stopwords.words("english") + STOPWORDS + stop1 + stop2 + st
 ################## Dynamic Topic Modelling ##################
 
 class DynTM:
-    def __init__(self, stop_words=None, num_topics=None, company=None,
-                 struct_df=None, subset_df=None, uniquetimes=None, time_slices=None, time_df=None,
-                 dictionary=None, corpus=None, texts=None, ldamodel=None):
+    def __init__(self, documents_object=None, num_topics=None):
+        if isinstance(documents_object, Documents):
+            self.doc_obj = documents_object
+            self.raw_df = documents_object.raw_df
+            self.stop_words = documents_object.stop_words
+            if documents_object.clean_status:
+                self.processed_df = documents_object.processed_df
+                self.text_column = documents_object.text_column
+            else:
+                # raise ValueError("Please run the prep_docs method on the Documents object first.")
+                self.doc_obj.prep_docs()
+                self.processed_df = self.doc_obj.processed_df
+                self.text_column = self.doc_obj.text_column
 
-        if not isinstance(documents, Documents):
-            raise TypeError("Only an object of Documents Class can be passed.")
-
-        self.doc_obj = documents_object
-        self.raw_df = documents_object.raw_df
-        if documents_object.clean_status:
-            self.processed_df = documents_object.processed_df
-            self.text_column = documents_object.text_column
-        else:
-            raise ValueError("Please run the prep_docs method on the Documents object first.")
             if method in ['lexical', 'textblob', 'vader']:
                 self.sent_method = method
                 if method == 'lexical':

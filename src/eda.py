@@ -149,7 +149,7 @@ class Documents:
 
         return document
 
-    def prep_docs(self, return_df=True):
+    def prep_docs(self, return_df=False):
         cleaned_text = str(self.text_column) + "_clean"
         self.processed_df[cleaned_text] = self.processed_df[self.text_column].apply(lambda x: self.__clean_text(x))
         self.clean_status = True

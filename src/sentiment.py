@@ -20,7 +20,11 @@ class Sentiment:
                 self.processed_df = documents_object.processed_df
                 self.text_column = documents_object.text_column
             else:
-                raise ValueError("Please run the prep_docs method on the Documents object first.")
+                # raise ValueError("Please run the prep_docs method on the Documents object first.")
+                self.doc_obj.prep_docs()
+                self.processed_df = self.doc_obj.processed_df
+                self.text_column = self.doc_obj.text_column
+
             if method in ['lexical', 'textblob', 'vader']:
                 self.sent_method = method
                 if method == 'lexical':

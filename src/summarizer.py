@@ -18,10 +18,14 @@ class Summary:
                 self.processed_df = documents_object.processed_df
                 self.text_column = documents_object.text_column
             else:
-                raise ValueError("Please run the prep_docs method on the Documents object first.")
+                # raise ValueError("Please run the prep_docs method on the Documents object first.")
+                self.doc_obj.prep_docs()
+                self.processed_df = self.doc_obj.processed_df
+                self.text_column = self.doc_obj.text_column
+
             if method in ['summary', 'all']:
                 if summary_ratio is None:
-                    summary_ratio = 0.2
+                    summary_ratio = 0.4
                 if (summary_ratio > 0 & summary_ratio < 1.0):
                     self.summary_ratio = summary_ratio
                 else:
@@ -30,7 +34,7 @@ class Summary:
                 raise ValueError("Please choose method as either of summary / keyword / all")
             if method in ['keyword', 'all']:
                 if keyword_ratio is None:
-                    keyword_ratio = 0.2
+                    keyword_ratio = 0.4
                 if (keyword_ratio > 0 & keyword_ratio < 1.0):
                     self.keyword_ratio = keyword_ratio
                 else:
