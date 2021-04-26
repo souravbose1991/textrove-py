@@ -1,73 +1,23 @@
 # Gensim
-import unicodedata
-import contractions
-import string
-from nltk.tokenize import RegexpTokenizer
-import re
-import pickle
 import os
-import matplotlib.pyplot as plt
 import pyLDAvis.gensim  # don't skip this
 import pyLDAvis
-from nltk.corpus import wordnet
-from nltk.stem import WordNetLemmatizer
-from nltk import TweetTokenizer
-import nltk
-from itertools import chain
-from bs4 import BeautifulSoup
-import swifter
+from nltk import word_tokenize
 import pandas as pd
-import numpy as np
-import gensim
-import gensim.corpora as corpora
-from gensim.parsing.preprocessing import remove_stopwords
+import numpy as np  
+from gensim.models.ldamulticore import LdaMulticore
 from gensim.models import Phrases
-from gensim.utils import simple_preprocess
 from gensim.models import CoherenceModel
-from gensim.models import ldaseqmodel
+# from gensim.models import ldaseqmodel
 from gensim.corpora import Dictionary, bleicorpus
-from gensim.matutils import hellinger
+from datetime import datetime
 
-from wordcloud import STOPWORDS
-from nltk.corpus import stopwords
-
-global UTIL_PATH, STOP_WORD
-UTIL_PATH = str(Path("../utils").resolve())
-
-################## Stopwords list ##################
-stop1 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
-         for x in open(UTIL_PATH+"/stopwords/"+"StopWords_Generic.txt", "r")]
-stop2 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
-         for x in open(UTIL_PATH+"/stopwords/"+"StopWords_GenericLong.txt", "r")]
-stop3 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
-         for x in open(UTIL_PATH+"/stopwords/"+"StopWords_DatesandNumbers.txt", "r")]
-
-STOP_WORD = list(set(list(stopwords.words("english")) + list(STOPWORDS) + stop1 + stop2 + stop3))
+global MODEL_PATH
+MODEL_PATH = os.path.abspath(os.path.dirname(models.__file__))
 
 
 
-#Spacy
-# import spacy
-# spacy.load('en')
-# from spacy.lang.en import English
-# parser = English()
-
-# nltk.data.path.append("/app/localstorage/u_am_coe/notebooks/nltk_data")
-# nltk.download('wordnet')
-# nltk.download('stopwords')
-# nltk.download('punkt')
-# nltk.download('averaged_perceptron_tagger')
-
-
-# Gensim
-
-# Plots
-# %matplotlib inline
-
-
-    
 ################## Dynamic Topic Modelling ##################
-
 class DynTM:
     def __init__(self, documents_object=None, num_topics=None):
         if isinstance(documents_object, Documents):
@@ -83,7 +33,7 @@ class DynTM:
                 self.processed_df = self.doc_obj.processed_df
                 self.text_column = self.doc_obj.text_column
 
-            if num_topics is None:
+            if (num_topics is None or num_topics <=1):
                 self.num_topics = 1
                 self.method = 'auto'
             elif num_topics > 1:
@@ -92,33 +42,45 @@ class DynTM:
             else:
                 raise ValueError("Please enter num_topics > 1")
         else:
-            pass
+            raise TypeError("Only an object of Documents Class can be passed.")ss
             
-
-
-        self.stop_words = stop_words
-        self.struct_df = struct_df
-        self.subset_df = subset_df
-        self.uniquetimes = uniquetimes
-        self.time_slices = time_slices
-        self.time_df = time_df
-#         self.vis_obj = vis_obj
-        self.num_topics = num_topics
-        self.company = company
-        self.ldamodel = ldamodel
-        self.dictionary = dictionary
-        self.corpus = corpus
-        self.texts = texts
+        self.ldamodel = None
+        self.model_path = None
+        self.dictionary = None
+        self.corpus = None  
+        self.texts = None
 
     
 
     ########### Prepare texts for Topic-Model ##############
 
-    def prepare_text(self,):
-        pass
+    def __prep_texts(self):
+        cleaned_text = str(self.text_column) + "_clean"
+        doc_lst = self.processed_df[cleaned_text].tolist()
+        doc_lst = [word_tokenize(str(doc)) for doc in doc_lst]
+
+        # Compute bigrams.
+        # Add bigrams and trigrams to docs (only ones that appear 5 times or more).
+        bigram = Phrases(doc_lst, min_count=2, threshold=1.0)
+        for idx in range(len(doc_lst)):
+            temp_bigram = []
+            for token in bigram[doc_lst[idx]]:
+                if '_' in token:
+                    # Token is a bigram, add to document.
+                    temp_bigram.append(token)
+            doc_lst.append(temp_bigram)
+
+        # Create Corpus
+        dictionary = Dictionary(doc_lst)
+        dictionary.filter_extremes(no_below=2, no_above=0.8)
+        corpus = [dictionary.doc2bow(text) for text in doc_lst]
+
+        self.texts = doc_lst
+        self.dictionary = dictionary
+        self.corpus = corpus
 
 
-    ################## Optimal Topic Number ##################
+    ################## Optimal Topic Counts ##################
 
     def __jaccard_similarity(self, topic_1, topic_2):
         """
@@ -154,7 +116,7 @@ class DynTM:
         model_list = {}
         LDA_topics = {}
         for i in num_topics:
-            model_list[i] = gensim.models.ldamulticore.LdaMulticore(corpus=self.corpus, id2word=self.dictionary,
+            model_list[i] = LdaMulticore(corpus=self.corpus, id2word=self.dictionary,
                             num_topics=i, passes=20, alpha='asymmetric', eta='auto', random_state=42, iterations=500,
                             per_word_topics=True, eval_every=None)
 
@@ -180,7 +142,7 @@ class DynTM:
         coh_sta_max = max(coh_sta_diffs)
         coh_sta_max_idxs = [i for i, j in enumerate(coh_sta_diffs) if j == coh_sta_max]
         ideal_topic_num_index = coh_sta_max_idxs[0] # choose less topics in case there's more than one max
-        ideal_topic_num = num_topics[ideal_topic_num_index]
+        optim_k = num_topics[ideal_topic_num_index]
 
         #### Plot for Optimal K ####
 
@@ -201,10 +163,53 @@ class DynTM:
         # plt.legend(fontsize=20)
         # plt.show() 
 
+        return optim_k
 
 
-    def __train_topicmodel(self):
-        pass
+    def __train_topicmodel(self, save_model=True, dir_name=None, file_name=None):
+        if (self.method=='auto'):
+            self.num_topics = self.__chooseK(limit=20, start=2, step=1)
+
+        # Build LDA model
+        ldamodel = LdaMulticore(corpus=self.corpus, id2word=self.dictionary, num_topics=self.num_topics, 
+                                passes=20, alpha='asymmetric', eta='auto', random_state=42, iterations=500, 
+                                per_word_topics=True, eval_every=None)
+        self.ldamodel = ldamodel
+        if save_model:
+            self.__save_topicmodel(dir_name=dir_name, file_name=file_name)
+        
+    
+    def __save_topicmodel(self, dir_name=None, file_name=None):
+        if dir_name is None:
+            dir_name = MODEL_PATH
+
+        if file_name is None:
+            file_name = "LDA_Model"
+
+        self.model_path = str(dir_name + file_name.strip() + " " + str(datetime.now()))
+        self.ldamodel.save(self.model_path + "/model_obj")
+
+
+    def __load_topicmodel(self, model_path=None):
+        self.model_path = model_path
+        self.ldamodel = LdaMulticore.load(model_path + "/model_obj", mmap='r')
+
+
+    def __eval_topicmodel(self):
+        coherencemodel = CoherenceModel(model=self.ldamodel, texts=self.texts, dictionary=self.dictionary, coherence='c_v')
+        top_topics = self.ldamodel.top_topics(corpus=self.corpus, texts=self.texts, dictionary=self.dictionary, 
+                                                window_size=None, coherence='c_v', topn=20)
+        # Average topic coherence is the sum of topic coherences of all topics, divided by the number of topics.
+        avg_topic_coherence = sum([t[1] for t in top_topics]) / len(top_topics)
+        print('Average topic coherence: %.4f.' % avg_topic_coherence)
+        print('Model coherence: %.4f.', coherencemodel.get_coherence())
+        print('Perplexity: ', self.ldamodel.log_perplexity(self.corpus))
+
+        # Visualize the topics
+        pyLDAvis.enable_notebook()
+        vis = pyLDAvis.gensim.prepare(self.ldamodel, self.corpus, self.dictionary, sort_topics=False)
+        pyLDAvis.save_html(vis, str(self.company) +
+                            '_lda_sta_' + str(timestamp) + '.html')
 
 
 
@@ -319,47 +324,6 @@ class DynTM:
     ################## Defining Topic models evaluation methods ##################
 
     def evaluate_model(self, coherence='c_v', seq=False):
-        if(seq == True):
-            coh_t = []
-            for i in range(len(self.uniquetimes)):
-                topics_dtm = self.model.dtm_coherence(time=i)
-                temp_mod = CoherenceModel(
-                    topics=topics_dtm, texts=self.texts, dictionary=self.dictionary, coherence='c_v')
-                coh_t.append(temp_mod.get_coherence())
-
-            avg_coherence = sum(coh_t) / len(coh_t)
-            print('Average Model coherence: %.4f.' % avg_coherence)
-
-            plt.plot(self.uniquetimes, coh_t)
-            plt.xticks(rotation=70)
-            plt.xlabel("Time Slices")
-            plt.ylabel("Coherence score")
-            plt.legend(("coherence_values"), loc='best')
-            plt.show()
-
-            fin = []
-            cols = ["Topic-" + str(i+1)
-                    for i in range(len(self.model.doc_topics(0)))]
-            for i in range(len(texts)):
-                temp1 = self.model.doc_topics(i)
-                fin.append(temp1)
-
-            top_share = pd.DataFrame(fin, columns=cols)
-            abc = pd.concat([self.time_df, top_share], axis=1)
-            top_share = abc.groupby('Year2').mean(
-            ).sort_values('Year2', ascending=True)
-
-            for i in range(len(self.model.doc_topics(0))):
-                y = np.array(top_share[cols[i]])
-                plt.plot(self.uniquetimes, y, label="Topic-" + str(i+1))
-
-            plt.xticks(rotation=70)
-            plt.xlabel("Time Slices")
-            plt.ylabel("Coherence score")
-            plt.legend()
-            plt.show()
-
-        else:
             coherencemodel = CoherenceModel(
                 model=self.model, texts=self.texts, dictionary=self.dictionary, coherence='c_v')
             top_topics = self.model.top_topics(
