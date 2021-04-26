@@ -55,7 +55,6 @@ class DynTM:
 
     
     ########### Prepare texts for Topic-Model ##############
-
     def __prep_texts(self):
         cleaned_text = str(self.text_column) + "_clean"
         doc_lst = self.processed_df[cleaned_text].tolist()
@@ -83,7 +82,6 @@ class DynTM:
 
 
     ################## Optimal Topic Counts ##################
-
     def __jaccard_similarity(self, topic_1, topic_2):
         """
         Derives the Jaccard similarity of two topics
@@ -97,6 +95,7 @@ class DynTM:
         union = set(topic_1).union(set(topic_2))
 
         return float(len(intersection))/float(len(union))
+
 
     def __plot_chooseK(self, num_topics, mean_stabilities, coherence_values, perplexity_values, optim_k):
         fig = make_subplots(rows=3, cols=1, specs=[[{}], [{"rowspan": 2}], [None]], shared_xaxes=True, vertical_spacing=0.00)
@@ -211,7 +210,6 @@ class DynTM:
 
 
     ################## Topic Modelling Formatted output ##################
-
     def format_topics_sentences(self, ldamodel=None, corpus=None, texts=None):
         # Init output
         sent_topics_df = pd.DataFrame()
@@ -240,5 +238,26 @@ class DynTM:
 
 
     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
