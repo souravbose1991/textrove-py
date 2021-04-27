@@ -38,10 +38,8 @@ class DynTM:
 
             if (num_topics is None or num_topics <=1):
                 self.num_topics = 1
-                self.method = 'auto'
             elif num_topics > 1:
                 self.num_topics = num_topics
-                self.method = 'mannual'
             else:
                 raise ValueError("Please enter num_topics > 1")
         else:
@@ -61,8 +59,8 @@ class DynTM:
         doc_lst = [word_tokenize(str(doc)) for doc in doc_lst]
 
         # Compute bigrams.
-        # Add bigrams and trigrams to docs (only ones that appear 5 times or more).
-        bigram = Phrases(doc_lst, min_count=2, threshold=1.0)
+        # Add bigrams to docs (as per the linked NPMI paper).
+        bigram = Phrases(doc_lst, threshold=10e-5, scoring='npmi')
         for idx in range(len(doc_lst)):
             temp_bigram = []
             for token in bigram[doc_lst[idx]]:
@@ -73,7 +71,7 @@ class DynTM:
 
         # Create Corpus
         dictionary = Dictionary(doc_lst)
-        dictionary.filter_extremes(no_below=2, no_above=0.8)
+        dictionary.filter_extremes(no_above=0.9)
         corpus = [dictionary.doc2bow(text) for text in doc_lst]
 
         self.texts = doc_lst
@@ -113,7 +111,7 @@ class DynTM:
         fig.show()
 
     
-    def __chooseK(self, limit=20, start=2, step=1):
+    def __chooseK(self, limit=15, start=2, step=1):
         """
         Compute c_v coherence & Model Stability for various number of topics and find optimal one
         Parameters:
@@ -165,11 +163,13 @@ class DynTM:
 
         return optim_k
 
-
-    def __train_topicmodel(self, save_model=True, dir_name=None, file_name=None):
-        if (self.method=='auto'):
-            self.num_topics = self.__chooseK(limit=20, start=2, step=1)
-
+    def __train_topicmodel(self, num_topics=1, save_model=False, dir_name=None, file_name=None):
+        if num_topics <= 1:
+            if self.num_topics == 1:
+                self.num_topics = self.__chooseK(limit=20, start=2, step=1)
+        else:
+            if self.num_topics == 1:
+                self.num_topics = num_topics
         # Build LDA model
         ldamodel = LdaMulticore(corpus=self.corpus, id2word=self.dictionary, num_topics=self.num_topics, 
                                 passes=20, alpha='asymmetric', eta='auto', random_state=42, iterations=500, 
@@ -186,63 +186,142 @@ class DynTM:
             file_name = "LDA_Model"
         self.model_path = str(dir_name + file_name.strip() + " " + str(datetime.now()))
         self.ldamodel.save(self.model_path + "/model_obj")
+        self.dictionary.save(self.model_path + "/dictionary_obj")
 
 
-    def __load_topicmodel(self, model_path=None):
+    def load_topicmodel(self, model_path=None):
         self.model_path = model_path
         self.ldamodel = LdaMulticore.load(model_path + "/model_obj", mmap='r')
+        self.dictionary = Dictionary.load(model_path + "/dictionary_obj", mmap='r')
+        self.num_topics = self.ldamodel.num_topics
 
 
-    def __eval_topicmodel(self):
-        coherencemodel = CoherenceModel(model=self.ldamodel, texts=self.texts, dictionary=self.dictionary, coherence='c_v')
-        top_topics = self.ldamodel.top_topics(corpus=self.corpus, texts=self.texts, dictionary=self.dictionary, 
-                                                window_size=None, coherence='c_v', topn=20)
-        # Average topic coherence is the sum of topic coherences of all topics, divided by the number of topics.
-        avg_topic_coherence = sum([t[1] for t in top_topics]) / len(top_topics)
-        print('Average topic coherence: %.4f.' % avg_topic_coherence)
-        print('Model coherence: %.4f.', coherencemodel.get_coherence())
-        print('Perplexity: ', self.ldamodel.log_perplexity(self.corpus))
+    def __eval_topicmodel(self, return_df=True, evaluation='complete'):
+        if evaluation == 'complete':
+            coherencemodel = CoherenceModel(model=self.ldamodel, texts=self.texts, dictionary=self.dictionary, coherence='c_v')
+            top_topics = self.ldamodel.top_topics(corpus=self.corpus, texts=self.texts, dictionary=self.dictionary, 
+                                                    window_size=None, coherence='c_v', topn=20)
+            # Average topic coherence is the sum of topic coherences of all topics, divided by the number of topics.
+            avg_topic_coherence = sum([t[1] for t in top_topics]) / len(top_topics)
+            print("\n")
+            print('Average topic coherence: %.4f.' % avg_topic_coherence)
+            print('Model coherence: %.4f.' % coherencemodel.get_coherence())
+            print('Perplexity: %.4f.' % self.ldamodel.log_perplexity(self.corpus))
+            print("\n")
+        topics = self.ldamodel.show_topics(num_topics=-1, formatted=False, num_words=30)
+        topic_dict = {}
+        for topicid, word_weight in topics:
+            wrd_lst = [word[0] for word in word_weight]
+            topic_dict['Topic-'+str(topicid+1)] = wrd_lst
+            print('Topic-'+str(topicid+1)+": ", wrd_lst)
+            print("\n")
+        topic_df = pd.DataFrame(topic_dict)
+        self.topic_map = topic_df
+        if return_df:
+            return topic_df
 
+
+    def __visualize(self, save_vis=False):
         # Visualize the topics
         pyLDAvis.enable_notebook()
         vis = pyLDAvis.gensim_models.prepare(self.ldamodel, self.corpus, self.dictionary, sort_topics=False)
-        pyLDAvis.save_html(vis, self.model_path + "/model_vis.html")
+        if save_vis:
+            pyLDAvis.save_html(vis, self.model_path + "/model_vis.html")
+        return vis
 
 
     ################## Topic Modelling Formatted output ##################
-    def format_topics_sentences(self, ldamodel=None, corpus=None, texts=None):
-        # Init output
-        sent_topics_df = pd.DataFrame()
+    def __eval_text(self, x, cleaned_text=None):
+        if cleaned_text is None:
+            cleaned_text = str(self.text_column) + "_clean"
+        doc_lst = list(x[cleaned_text])
+        doc_lst = [word_tokenize(str(doc)) for doc in doc_lst]
 
-        # Get main topic in each document
-        for i, row_list in enumerate(ldamodel[corpus]):
-            row = row_list[0] if ldamodel.per_word_topics else row_list
-            # print(row)
-            row = sorted(row, key=lambda x: (x[1]), reverse=True)
-            # Get the Dominant topic, Perc Contribution and Keywords for each document
-            for j, (topic_num, prop_topic) in enumerate(row):
-                if j == 0:  # => dominant topic
-                    wp = ldamodel.show_topic(topic_num)
-                    topic_keywords = ", ".join([word for word, prop in wp])
-                    sent_topics_df = sent_topics_df.append(pd.Series(
-                        [int(topic_num), round(prop_topic, 4), topic_keywords]), ignore_index=True)
-                else:
-                    break
-        sent_topics_df.columns = ['Dominant_Topic',
-                                  'Perc_Contribution', 'Topic_Keywords']
-
-        # Add original text to the end of the output
-        contents = pd.Series(texts)
-        sent_topics_df = pd.concat([sent_topics_df, contents], axis=1)
-        return sent_topics_df
-
-
+        # Compute bigrams.
+        # Add bigrams to docs (as per the linked NPMI paper).
+        bigram = Phrases(doc_lst, threshold=10e-5, scoring='npmi')
+        for idx in range(len(doc_lst)):
+            temp_bigram = []
+            for token in bigram[doc_lst[idx]]:
+                if '_' in token:
+                    # Token is a bigram, add to document.
+                    temp_bigram.append(token)
+            doc_lst.append(temp_bigram)
+        
+        corpus = [self.dictionary.doc2bow(text) for text in doc_lst]
+        all_topics = self.ldamodel.get_document_topics(corpus[0])
+        for element in all_topics:
+            x['Topic-'+str(element[0]+1)] = element[1]
+        return x
     
 
+    def suggest_num_topic(self):
+        self.__prep_texts()
+        optim_k = self.__chooseK(limit=20, start=2, step=1)
+        return optim_k
 
 
+    def fit(self, num_topics=1, save_model=False, dir_name=None, file_name=None):
+        self.__prep_texts()
+        self.__train_topicmodel(num_topics=num_topics, save_model=save_model, dir_name=dir_name, file_name=file_name)
+        print("Model training complete.")
+        
+
+    def evaluate(self, save_vis=False):
+        if self.ldamodel is not None:
+            topic_df = self.__eval_topicmodel(return_df=True)
+            vis = self.__visualize(save_vis=save_vis)
+            return (topic_df, vis)
+        else:
+            raise Exception("Train/Load a LDA model first")
 
 
+    def predict(self, data=None, text_column=None, return_df=True):
+        if self.ldamodel is not None:
+            if data is None:
+                data = self.processed_df
+            data = data.apply(lambda x: self.__eval_text(x, cleaned_text=text_column), axis=1)
+            self.processed_df = data
+            if return_df:
+                return data
+        else:
+            raise Exception("Train/Load a LDA model first")
+
+
+    def plot_topics(self, data=None, text_column=None, X_variable=None, return_df=False):
+        if self.ldamodel is None:
+            raise Exception("Train/Load a LDA model first")
+        temp_df = self.predict(data=data, text_column=text_column, return_df=True)
+        
+        if (X_variable not in temp_df.columns and X_variable is not None):
+            raise ValueError("Provide proper variable name as X-Category.")
+
+        self.__eval_topicmodel(return_df=False, evaluation='partial')
+        print("\n")
+
+        topic_shr = {}
+        if X_variable is None:
+            for i in range(0, self.ldamodel.num_topics):
+                topic_shr['Topic-'+str(i+1)] = round(100.0*temp_df['Topic-'+str(i+1)].mean(), 1)
+            labels = list(topic_shr.keys())
+            values = list(topic_shr.values())
+            fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.4, hoverinfo="label+percent+name")])
+            fig.update_layout(template="plotly_white", title_text=plot_title("Static Topic Analysis"))
+            fig.show()
+        else:
+            tops = ['Topic-'+str(i+1) for i in range(0, self.ldamodel.num_topics)]
+            tdf = temp_df[[X_variable]+tops].groupby([X_variable]).mean()
+            tdf = tdf.sort_index().reset_index()
+            fig = go.Figure()
+            for item in tops:
+                fig.add_trace(go.Bar(x=tdf[X_variable], y=100.0*tdf[item].round(1), name=item))
+            fig.update_layout(barmode='stack', yaxis_visible=False, yaxis_showticklabels=False, template="plotly_white",
+                              title_text=plot_title("Dynamic Topic Analysis"))
+            fig.show()
+
+        if return_df:
+            return temp_df
+        
 
 
 

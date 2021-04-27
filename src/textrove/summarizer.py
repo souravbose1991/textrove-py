@@ -3,6 +3,7 @@ from gensim.summarization import summarize, keywords
 from .eda import Documents
 from . import utils
 import os
+import re
 
 # # Spacy
 # import spacy
@@ -32,7 +33,7 @@ class Summary:
                 self.method = method
                 if summary_ratio is None:
                     summary_ratio = 0.4
-                if (summary_ratio > 0 & summary_ratio < 1.0):
+                if (summary_ratio > 0.0 and summary_ratio < 1.0):
                     self.summary_ratio = summary_ratio
                 else:
                     raise ValueError("Summary-Ratio should be between (0, 1) non-inclusive rage")
@@ -42,7 +43,7 @@ class Summary:
                 self.method = method
                 if keyword_ratio is None:
                     keyword_ratio = 0.4
-                if (keyword_ratio > 0 & keyword_ratio < 1.0):
+                if (keyword_ratio > 0.0 and keyword_ratio < 1.0):
                     self.keyword_ratio = keyword_ratio
                 else:
                     raise ValueError("KeyWord-Ratio should be between (0, 1) non-inclusive rage")
@@ -51,14 +52,29 @@ class Summary:
         else:
             raise TypeError("Only an object of Documents Class can be passed.")
 
-    def __get_summary(self, x):
-        summary_text = str(self.text_column) + "_summary"
-        x[summary_text] = summarize(x[self.text_column], ratio=self.summary_ratio)
+    def __get_summary(self, x, text_column=None):
+        if text_column is None:
+            text_column = str(self.text_column)
+        summary_text = str(text_column) + "_summary"
+        try:
+            summ = summarize(x[text_column], ratio=self.summary_ratio)
+        except:
+            summ = x[text_column]
+        summ = re.sub('\n', ' ', summ)
+        summ = summ.strip()
+        if len(summ) <= 1:
+            summ = str(x[text_column])
+        x[summary_text] = summ
         return x
 
-    def __get_keyword(self, x):
-        keyword_text = str(self.text_column) + "_keyword"
-        x[keyword_text] = keywords(x[self.text_column], ratio=self.keyword_ratio)
+    def __get_keyword(self, x, text_column=None):
+        if text_column is None:
+            text_column = str(self.text_column)
+        keyword_text = str(text_column) + "_keyword"
+        keywrd = keywords(x[text_column], ratio=self.keyword_ratio)
+        keywrd = re.sub('\n', ', ', keywrd)
+        keywrd = keywrd.strip()
+        x[keyword_text] = keywrd
         return x
 
     def generate_results(self):

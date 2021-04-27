@@ -125,8 +125,7 @@ class Documents:
         # insert spaces between special characters to isolate them
         special_char_pattern = re.compile(r'([{.(-)!}])')
         document = special_char_pattern.sub(" \\1 ", document)
-        document = self.__remove_special_characters(
-            document, remove_digits=True)
+        document = self.__remove_special_characters(document, remove_digits=True)
 
         # remove extra whitespace
         document = re.sub(' +', ' ', document)
