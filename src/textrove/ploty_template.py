@@ -1,6 +1,9 @@
 import plotly.graph_objects as go
 import plotly.express as px
 
+import warnings
+warnings.filterwarnings("ignore")
+
 custom_template = {
     "layout": go.Layout(
         font={

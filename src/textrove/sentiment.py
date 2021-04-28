@@ -10,6 +10,9 @@ from sklearn.feature_extraction.text import CountVectorizer
 from . import utils
 import os
 
+import warnings
+warnings.filterwarnings("ignore")
+
 # import swifter
 
 global UTIL_PATH

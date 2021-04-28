@@ -16,6 +16,9 @@ from .ploty_template import plot_title
 from .eda import Documents
 from . import models
 
+import warnings
+warnings.filterwarnings("ignore")
+
 global MODEL_PATH
 MODEL_PATH = os.path.abspath(os.path.dirname(models.__file__))
 

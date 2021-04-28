@@ -5,6 +5,9 @@ from . import utils
 import os
 import re
 
+import warnings
+warnings.filterwarnings("ignore")
+
 # # Spacy
 # import spacy
 # nlp = spacy.load('en_core_web_md')

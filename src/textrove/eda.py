@@ -20,6 +20,9 @@ from nltk.tokenize import RegexpTokenizer
 from . import utils
 import os
 
+import warnings
+warnings.filterwarnings("ignore")
+
 # Spacy
 import spacy
 nlp = spacy.load('en_core_web_md')
