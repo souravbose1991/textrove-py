@@ -223,9 +223,9 @@ class DynTM:
             # Average topic coherence is the sum of topic coherences of all topics, divided by the number of topics.
             avg_topic_coherence = sum([t[1] for t in top_topics]) / len(top_topics)
             print("\n")
-            print('Average topic coherence: %.4f.' % avg_topic_coherence)
-            print('Model coherence: %.4f.' % coherencemodel.get_coherence())
-            print('Perplexity: %.4f.' % self.ldamodel.log_perplexity(self.corpus)*-1)
+            print('Average topic coherence: %.4f' % avg_topic_coherence)
+            print('Model coherence: %.4f' % coherencemodel.get_coherence())
+            print('Perplexity: %.4f' % self.ldamodel.log_perplexity(self.corpus))
             print("\n")
         topics = self.ldamodel.show_topics(num_topics=-1, formatted=False, num_words=30)
         topic_dict = {}
@@ -242,7 +242,6 @@ class DynTM:
 
     def __visualize(self, save_vis=False):
         # Visualize the topics
-        pyLDAvis.enable_notebook()
         vis = pyLDAvis.gensim_models.prepare(self.ldamodel, self.corpus, self.dictionary, sort_topics=False)
         if save_vis:
             pyLDAvis.save_html(vis, self.model_path + "/model_vis.html")
@@ -251,7 +250,6 @@ class DynTM:
 
     ################## Topic Modelling Formatted output ##################
     def __eval_text(self, x, cleaned_text=None):
-        print("--- Preparing texts for predictions ---")
         if cleaned_text is None:
             cleaned_text = str(self.text_column) + "_clean"
         doc_lst = list(x[cleaned_text])
@@ -267,13 +265,12 @@ class DynTM:
                     # Token is a bigram, add to document.
                     temp_bigram.append(token)
             doc_lst.append(temp_bigram)
-        
         corpus = [self.dictionary.doc2bow(text) for text in doc_lst]
-        print("--- Predicting on the texts ---")
         all_topics = self.ldamodel.get_document_topics(corpus[0])
         for element in all_topics:
             x['Topic-'+str(element[0]+1)] = element[1]
         return x
+
     
     def suggest_num_topic(self, limit=15, start=2, step=1):
         self.__prep_texts()
@@ -300,6 +297,7 @@ class DynTM:
         if self.ldamodel is not None:
             if data is None:
                 data = self.processed_df
+            print("--- Predicting on the texts ---")
             data = data.apply(lambda x: self.__eval_text(x, cleaned_text=text_column), axis=1)
             self.processed_df = data
             if return_df:
