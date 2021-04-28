@@ -100,7 +100,10 @@ class DynTM:
 
 
     def __plot_chooseK(self, num_topics, mean_stabilities, coherence_values, perplexity_values, optim_k):
-        fig = make_subplots(rows=3, cols=1, specs=[[{}], [{"rowspan": 2}], [None]], shared_xaxes=True, vertical_spacing=0.00)
+        miny1 = min(perplexity_values[:-1])*0.8
+        maxy1 = max(perplexity_values[:-1])*1.2
+        fig = make_subplots(rows=3, cols=1, specs=[[{}], [{"rowspan": 2}], [None]], 
+                            shared_xaxes=True, shared_yaxes=False, vertical_spacing=0.00)
         fig.add_trace(go.Scatter(x=num_topics[:-1], y=perplexity_values[:-1], mode='lines+markers',
                                 line_shape='spline', name='Perplexity Score'), row=1, col=1)
         fig.add_trace(go.Scatter(x=num_topics[:-1], y=coherence_values[:-1], mode='lines+markers',
@@ -108,9 +111,12 @@ class DynTM:
         fig.add_trace(go.Scatter(x=num_topics[:-1], y=mean_stabilities, mode='lines+markers',
                                  line_shape='spline', name='Stability Score'), row=2, col=1)
         fig.add_shape(type='line', x0=optim_k, y0=0, x1=optim_k,
-                      line=dict(color="MediumPurple", width=3, dash='dashdot'))
-        fig.update_layout(yaxis_visible=False, yaxis_showticklabels=False, xaxis_title='Number of Topics',
-                          yaxis2_visible=False, yaxis2_showticklabels=False, template="plotly_white",
+                      line=dict(color="MediumPurple", width=3, dash='dashdot'),  row=1, col=1)
+        fig.add_shape(type='line', x0=optim_k, y0=0, x1=optim_k,
+                      line=dict(color="MediumPurple", width=3, dash='dashdot'),  row=2, col=1)
+        fig.update_layout(yaxis_visible=False, yaxis_showticklabels=False, xaxis2_title='Number of Topics', 
+                          yaxis2_visible=False, yaxis2_showticklabels=False, template="plotly_white", 
+                          yaxis_range=[miny1, maxy1], yaxis2_range=[0, 1],
                           title_text=plot_title("Optimal Topic Analysis"))
         fig.show()
 
@@ -133,15 +139,17 @@ class DynTM:
         num_topics = list(range(start, limit+step+step, step))
         model_list = {}
         LDA_topics = {}
+        print("--- Checking for best K between [" + str(start) + ", " + str(limit) +"] --- \n")
         for i in num_topics:
-            print("--- Simulating Model with K=" + str(i) + " ---")
+            if i <= limit:
+                print("--- Simulating Model with K=" + str(i) + " ---")
             model_list[i] = LdaMulticore(corpus=self.corpus, id2word=self.dictionary,
                             num_topics=i, passes=20, alpha='asymmetric', eta='auto', random_state=42, iterations=500,
                             per_word_topics=True, eval_every=None)
 
             shown_topics = model_list[i].show_topics(num_topics=i, num_words=20, formatted=False)
             LDA_topics[i] = [[word[0] for word in topic[1]] for topic in shown_topics]
-            perplexity_values.append(model_list[i].log_perplexity(self.corpus))
+            perplexity_values.append(model_list[i].log_perplexity(self.corpus)*-1)
             coherence_values.append(CoherenceModel(model=model_list[i], texts=self.texts, dictionary=self.dictionary,
                                     coherence='c_v').get_coherence())
         
@@ -217,7 +225,7 @@ class DynTM:
             print("\n")
             print('Average topic coherence: %.4f.' % avg_topic_coherence)
             print('Model coherence: %.4f.' % coherencemodel.get_coherence())
-            print('Perplexity: %.4f.' % self.ldamodel.log_perplexity(self.corpus))
+            print('Perplexity: %.4f.' % self.ldamodel.log_perplexity(self.corpus)*-1)
             print("\n")
         topics = self.ldamodel.show_topics(num_topics=-1, formatted=False, num_words=30)
         topic_dict = {}
