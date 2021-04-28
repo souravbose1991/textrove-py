@@ -57,6 +57,7 @@ class DynTM:
     
     ########### Prepare texts for Topic-Model ##############
     def __prep_texts(self):
+        print("--- Preparing Texts for Model ---")
         cleaned_text = str(self.text_column) + "_clean"
         doc_lst = self.processed_df[cleaned_text].tolist()
         doc_lst = [word_tokenize(str(doc)) for doc in doc_lst]
@@ -133,6 +134,7 @@ class DynTM:
         model_list = {}
         LDA_topics = {}
         for i in num_topics:
+            print("--- Simulating Model with K=" + str(i) + " ---")
             model_list[i] = LdaMulticore(corpus=self.corpus, id2word=self.dictionary,
                             num_topics=i, passes=20, alpha='asymmetric', eta='auto', random_state=42, iterations=500,
                             per_word_topics=True, eval_every=None)
@@ -143,6 +145,7 @@ class DynTM:
             coherence_values.append(CoherenceModel(model=model_list[i], texts=self.texts, dictionary=self.dictionary,
                                     coherence='c_v').get_coherence())
         
+        print("--- Calculating Stability Index ---")
         LDA_stability = {}
         for i in range(0, len(num_topics)-1):
             jaccard_sims = []
@@ -155,6 +158,7 @@ class DynTM:
 
         mean_stabilities = [np.array(LDA_stability[i]).mean() for i in num_topics[:-1]]
 
+        print("--- Identifying Optimal K ---")
         coh_sta_diffs = [coherence_values[i] - mean_stabilities[i] for i in range(0, len(num_topics)-1)]
         coh_sta_max = max(coh_sta_diffs)
         coh_sta_max_idxs = [i for i, j in enumerate(coh_sta_diffs) if j == coh_sta_max]
@@ -165,6 +169,7 @@ class DynTM:
         self.__plot_chooseK(num_topics, mean_stabilities, coherence_values, perplexity_values, optim_k)
 
         return optim_k
+
 
     def __train_topicmodel(self, num_topics=1, save_model=False, dir_name=None, file_name=None):
         if num_topics <= 1:
@@ -187,12 +192,14 @@ class DynTM:
             dir_name = MODEL_PATH
         if file_name is None:
             file_name = "LDA_Model"
+        print("--- Saving Model ---")
         self.model_path = str(dir_name + file_name.strip() + " " + str(datetime.now()))
         self.ldamodel.save(self.model_path + "/model_obj")
         self.dictionary.save(self.model_path + "/dictionary_obj")
 
 
     def load_topicmodel(self, model_path=None):
+        print("--- Loading Model ---")
         self.model_path = model_path
         self.ldamodel = LdaMulticore.load(model_path + "/model_obj", mmap='r')
         self.dictionary = Dictionary.load(model_path + "/dictionary_obj", mmap='r')
@@ -201,6 +208,7 @@ class DynTM:
 
     def __eval_topicmodel(self, return_df=True, evaluation='complete'):
         if evaluation == 'complete':
+            print("--- Evaluating Model Metrics ---")
             coherencemodel = CoherenceModel(model=self.ldamodel, texts=self.texts, dictionary=self.dictionary, coherence='c_v')
             top_topics = self.ldamodel.top_topics(corpus=self.corpus, texts=self.texts, dictionary=self.dictionary, 
                                                     window_size=None, coherence='c_v', topn=20)
@@ -235,6 +243,7 @@ class DynTM:
 
     ################## Topic Modelling Formatted output ##################
     def __eval_text(self, x, cleaned_text=None):
+        print("--- Preparing texts for predictions ---")
         if cleaned_text is None:
             cleaned_text = str(self.text_column) + "_clean"
         doc_lst = list(x[cleaned_text])
@@ -252,15 +261,15 @@ class DynTM:
             doc_lst.append(temp_bigram)
         
         corpus = [self.dictionary.doc2bow(text) for text in doc_lst]
+        print("--- Predicting on the texts ---")
         all_topics = self.ldamodel.get_document_topics(corpus[0])
         for element in all_topics:
             x['Topic-'+str(element[0]+1)] = element[1]
         return x
     
-
-    def suggest_num_topic(self):
+    def suggest_num_topic(self, limit=15, start=2, step=1):
         self.__prep_texts()
-        optim_k = self.__chooseK(limit=20, start=2, step=1)
+        optim_k = self.__chooseK(limit=limit, start=start, step=step)
         return optim_k
 
 
