@@ -11,7 +11,6 @@ from bs4 import BeautifulSoup
 from itertools import chain
 import re
 import unicodedata
-from pathlib import Path
 # import contractions
 from sklearn.feature_extraction.text import CountVectorizer
 from nltk.corpus import stopwords

@@ -10,7 +10,7 @@ from gensim.models.ldamulticore import LdaMulticore
 from gensim.models import Phrases
 from gensim.models import CoherenceModel
 # from gensim.models import ldaseqmodel
-from gensim.corpora import Dictionary, bleicorpus
+from gensim.corpora import Dictionary
 from datetime import datetime
 from .ploty_template import plot_title
 from .eda import Documents

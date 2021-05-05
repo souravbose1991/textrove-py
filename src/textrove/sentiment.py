@@ -3,7 +3,6 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 from .ploty_template import plot_title
 import pandas as pd
-from pathlib import Path
 from .eda import Documents
 from sklearn.feature_extraction.text import CountVectorizer
 # import importlib.resources as pkg_resources

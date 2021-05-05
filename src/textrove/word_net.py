@@ -1,17 +1,9 @@
 
 import numpy as np
 import pandas as pd
-from PIL import Image
 # import swifter
-from bs4 import BeautifulSoup
-from itertools import chain
-import re
-import unicodedata
-from pathlib import Path
 from .eda import Documents
 # import contractions
-from nltk.corpus import stopwords
-from nltk.tokenize import RegexpTokenizer
 # import importlib.resources as pkg_resources
 from sklearn.feature_extraction.text import CountVectorizer
 from . import www
