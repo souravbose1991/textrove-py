@@ -10,6 +10,8 @@ from . import www
 import os
 from pyvis.network import Network
 import networkx as nx
+from tqdm.autonotebook import tqdm  
+tqdm.pandas()
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -44,13 +46,13 @@ class WordNetwork:
         dtm = dtm.clip(0, 1)
         corr_mat = dtm.corr()
         np.fill_diagonal(corr_mat.values, 0.0)
-        corr_mat = corr_mat.apply(abs)
+        corr_mat = corr_mat.progress_apply(abs)
         return corr_mat
 
     def __corr_to_netx(self, corr_mat, thresh):
         corr_mat = corr_mat.reset_index()
         net_mat = corr_mat.melt(id_vars=['index'])
-        net_mat = net_mat[~net_mat[['index', 'variable']].apply(frozenset, 1).duplicated()]
+        net_mat = net_mat[~net_mat[['index', 'variable']].progress_apply(frozenset, 1).duplicated()]
         net_mat = net_mat.rename(columns={"index": "Source", "variable": "Target", "value": "Weight"})
         net_mat = net_mat.loc[net_mat['Weight'] >= thresh].reset_index(drop=True)
         return net_mat

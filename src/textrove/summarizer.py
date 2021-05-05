@@ -4,6 +4,8 @@ from .eda import Documents
 from . import utils
 import os
 import re
+from tqdm.autonotebook import tqdm
+tqdm.pandas()
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -83,12 +85,12 @@ class Summary:
     def generate_results(self):
         temp_df = self.processed_df
         if self.method == 'summary':
-            temp_df = temp_df.apply(lambda x: self.__get_summary(x), axis=1)
+            temp_df = temp_df.progress_apply(lambda x: self.__get_summary(x), axis=1)
         elif self.method == 'keyword':
-            temp_df = temp_df.apply(lambda x: self.__get_keyword(x), axis=1)
+            temp_df = temp_df.progress_apply(lambda x: self.__get_keyword(x), axis=1)
         else:
-            temp_df = temp_df.apply(lambda x: self.__get_summary(x), axis=1)
-            temp_df = temp_df.apply(lambda x : self.__get_keyword(x), axis=1)
+            temp_df = temp_df.progress_apply(lambda x: self.__get_summary(x), axis=1)
+            temp_df = temp_df.progress_apply(lambda x : self.__get_keyword(x), axis=1)
         self.processed_df = temp_df
         return temp_df
 

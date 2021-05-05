@@ -16,6 +16,8 @@ from nltk.tokenize import RegexpTokenizer
 # import importlib.resources as pkg_resources
 from . import utils
 import os
+from tqdm.autonotebook import tqdm
+tqdm.pandas()
 
 import warnings
 warnings.filterwarnings("ignore")

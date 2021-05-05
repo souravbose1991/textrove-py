@@ -18,6 +18,8 @@ from nltk.tokenize import RegexpTokenizer
 # import importlib.resources as pkg_resources
 from . import utils
 import os
+from tqdm.autonotebook import tqdm  
+tqdm.pandas()
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -158,7 +160,7 @@ class Documents:
 
     def prep_docs(self, return_df=False):
         cleaned_text = str(self.text_column) + "_clean"
-        self.processed_df[cleaned_text] = self.processed_df[self.text_column].apply(lambda x: self.__clean_text(x))
+        self.processed_df[cleaned_text] = self.processed_df[self.text_column].progress_apply(lambda x: self.__clean_text(x))
         self.clean_status = True
         if return_df:
             return self.processed_df

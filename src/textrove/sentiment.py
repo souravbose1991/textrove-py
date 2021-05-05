@@ -8,6 +8,8 @@ from sklearn.feature_extraction.text import CountVectorizer
 # import importlib.resources as pkg_resources
 from . import utils
 import os
+from tqdm.autonotebook import tqdm
+tqdm.pandas()
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -178,7 +180,7 @@ class Sentiment:
                 loughran_list = self.__load_loughran()
                 self.lexi_dict['Positive'] = loughran_list[0]
                 self.lexi_dict['Negative'] = loughran_list[1]
-                temp_df = temp_df.apply(lambda x: self.__sent_loughran(x, loughran_list=loughran_list), axis=1)
+                temp_df = temp_df.progress_apply(lambda x: self.__sent_loughran(x, loughran_list=loughran_list), axis=1)
         self.processed_df = temp_df
         return temp_df
 

@@ -15,6 +15,8 @@ from datetime import datetime
 from .ploty_template import plot_title
 from .eda import Documents
 from . import models
+from tqdm.autonotebook import tqdm
+tqdm.pandas()
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -298,7 +300,7 @@ class DynTM:
             if data is None:
                 data = self.processed_df
             print("--- Predicting on the texts ---")
-            data = data.apply(lambda x: self.__eval_text(x, cleaned_text=text_column), axis=1)
+            data = data.progress_apply(lambda x: self.__eval_text(x, cleaned_text=text_column), axis=1)
             self.processed_df = data
             if return_df:
                 return data
