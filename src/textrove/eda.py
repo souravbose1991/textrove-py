@@ -13,7 +13,13 @@ import re
 import unicodedata
 # import contractions
 from sklearn.feature_extraction.text import CountVectorizer
-from nltk.corpus import stopwords
+import nltk
+# nltk.download('wordnet')
+# nltk.download('stopwords')
+# nltk.download('punkt')
+# nltk.download('averaged_perceptron_tagger')
+from nltk.corpus import stopwords, wordnet
+from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import RegexpTokenizer
 # import importlib.resources as pkg_resources
 from . import utils
@@ -73,14 +79,14 @@ class Documents:
         return list(chain.from_iterable(listOfLists))
 
     # Lemmatize with POS Tag
-    # def __get_wordnet_pos(self, word):
-    #     """Map POS tag to first character lemmatize() accepts"""
-    #     tag = nltk.pos_tag([word])[0][1][0].upper()
-    #     tag_dict = {"J": wordnet.ADJ,
-    #                 "N": wordnet.NOUN,
-    #                 "V": wordnet.VERB,
-    #                 "R": wordnet.ADV}
-    #     return tag_dict.get(tag, wordnet.NOUN)
+    def __get_wordnet_pos(self, word):
+        """Map POS tag to first character lemmatize() accepts"""
+        tag = nltk.pos_tag([word])[0][1][0].upper()
+        tag_dict = {"J": wordnet.ADJ,
+                    "N": wordnet.NOUN,
+                    "V": wordnet.VERB,
+                    "R": wordnet.ADV}
+        return tag_dict.get(tag, wordnet.NOUN)
 
     def __strip_html_tags(self, text):
         soup = BeautifulSoup(text, "html.parser")
@@ -152,7 +158,13 @@ class Documents:
         document = " ".join(document)
 
         # lemmatize
-        document = [token.lemma_ for token in nlp(document) if not token.is_stop]
+        # document = [token.lemma_ for token in nlp(document) if not token.is_stop]
+        # document = [word for word in document if not word in self.stop_words]
+        # document = " ".join(document)
+
+        document = document.split()
+        lemmatizer = WordNetLemmatizer()
+        document = [lemmatizer.lemmatize(word, self.__get_wordnet_pos(word)) for word in document]
         document = [word for word in document if not word in self.stop_words]
         document = " ".join(document)
 
@@ -215,26 +227,30 @@ class Documents:
                                             ngram=ng, most_frequent_first=True)
                 temp_df1 = temp_df1.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
                 fig1 = go.Figure(data=[go.Bar(x=temp_df1['Phrase'], y=temp_df1['Count'])])
-                fig1.update_layout(template="plotly_white", title_text=plot_title("Frequent Words"))
+                fig1.update_layout(xaxis_showticklabels=True, xaxis_type='category',
+                                   template="plotly_white", title_text=plot_title("Frequent Words"))
                 fig1.show()
                 temp_df2 = self.__get_ngrams(self.processed_df[cleaned_text], nwords=nwords, min_freq=min_freq,
                                             ngram=ng, most_frequent_first=False)
                 temp_df2 = temp_df2.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
                 fig2 = go.Figure(data=[go.Bar(x=temp_df2['Phrase'], y=temp_df2['Count'])])
-                fig2.update_layout(template="plotly_white", title_text=plot_title("Rare Words"))
+                fig2.update_layout(xaxis_showticklabels=True, xaxis_type='category',
+                                   template="plotly_white", title_text=plot_title("Rare Words"))
                 fig2.show()
             else:
                 temp_df1 = self.__get_ngrams(self.processed_df[cleaned_text], nwords=nwords, min_freq=min_freq,
                                             ngram=ng, most_frequent_first=True)
                 temp_df1 = temp_df1.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
                 fig1 = go.Figure(data=[go.Bar(x=temp_df1['Phrase'], y=temp_df1['Count'])])
-                fig1.update_layout(template="plotly_white", title_text=plot_title("Frequent Phrases"))
+                fig1.update_layout(xaxis_showticklabels=True, xaxis_type='category',
+                                   template="plotly_white", title_text=plot_title("Frequent Phrases " + str(ng) + "-grams"))
                 fig1.show()
                 temp_df2 = self.__get_ngrams(self.processed_df[cleaned_text], nwords=nwords, min_freq=min_freq,
                                             ngram=ng, most_frequent_first=False)
                 temp_df2 = temp_df2.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
                 fig2 = go.Figure(data=[go.Bar(x=temp_df2['Phrase'], y=temp_df2['Count'])])
-                fig2.update_layout(template="plotly_white",title_text=plot_title("Rare Phrases"))
+                fig2.update_layout(xaxis_showticklabels=True, xaxis_type='category',
+                                   template="plotly_white", title_text=plot_title("Rare Phrases " + str(ng) + "-grams"))
                 fig2.show()
 
     def create_wordcloud(self):

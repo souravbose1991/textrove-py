@@ -58,26 +58,27 @@ class DynTM:
 
     
     ########### Prepare texts for Topic-Model ##############
-    def __prep_texts(self):
+    def __prep_texts(self, include_bigrams=False):
         print("--- Preparing Texts for Model ---")
         cleaned_text = str(self.text_column) + "_clean"
         doc_lst = self.processed_df[cleaned_text].tolist()
         doc_lst = [word_tokenize(str(doc)) for doc in doc_lst]
 
-        # Compute bigrams.
-        # Add bigrams to docs (as per the linked NPMI paper).
-        bigram = Phrases(doc_lst, threshold=10e-5, scoring='npmi')
-        for idx in range(len(doc_lst)):
-            temp_bigram = []
-            for token in bigram[doc_lst[idx]]:
-                if '_' in token:
-                    # Token is a bigram, add to document.
-                    temp_bigram.append(token)
-            doc_lst.append(temp_bigram)
+        if include_bigrams:
+            # Compute bigrams.
+            # Add bigrams to docs (as per the linked NPMI paper).
+            bigram = Phrases(doc_lst, threshold=10e-5, scoring='npmi')
+            for idx in range(len(doc_lst)):
+                temp_bigram = []
+                for token in bigram[doc_lst[idx]]:
+                    if '_' in token:
+                        # Token is a bigram, add to document.
+                        temp_bigram.append(token)
+                doc_lst.append(temp_bigram)
 
         # Create Corpus
         dictionary = Dictionary(doc_lst)
-        dictionary.filter_extremes(no_above=0.9)
+        # dictionary.filter_extremes(no_above=0.95)
         corpus = [dictionary.doc2bow(text) for text in doc_lst]
 
         self.texts = doc_lst
@@ -89,7 +90,6 @@ class DynTM:
     def __jaccard_similarity(self, topic_1, topic_2):
         """
         Derives the Jaccard similarity of two topics
-
         Jaccard similarity:
         - A statistic used for comparing the similarity and diversity of sample sets
         - J(A,B) = (A ∩ B)/(A ∪ B)
@@ -102,8 +102,8 @@ class DynTM:
 
 
     def __plot_chooseK(self, num_topics, mean_stabilities, coherence_values, perplexity_values, optim_k):
-        miny1 = min(perplexity_values[:-1])*0.8
-        maxy1 = max(perplexity_values[:-1])*1.2
+        miny1 = min(perplexity_values[:-1])*0.85
+        maxy1 = max(perplexity_values[:-1])*1.15
         fig = make_subplots(rows=3, cols=1, specs=[[{}], [{"rowspan": 2}], [None]], 
                             shared_xaxes=True, shared_yaxes=False, vertical_spacing=0.00)
         fig.add_trace(go.Scatter(x=num_topics[:-1], y=perplexity_values[:-1], mode='lines+markers',
@@ -186,11 +186,11 @@ class DynTM:
             if self.num_topics == 1:
                 self.num_topics = self.__chooseK(limit=20, start=2, step=1)
         else:
-            if self.num_topics == 1:
-                self.num_topics = num_topics
+            # if self.num_topics == 1:
+            self.num_topics = num_topics
         # Build LDA model
         ldamodel = LdaMulticore(corpus=self.corpus, id2word=self.dictionary, num_topics=self.num_topics, 
-                                passes=20, alpha='asymmetric', eta='auto', random_state=42, iterations=500, 
+                                passes=20, alpha='asymmetric', eta='auto', random_state=42, iterations=1000, 
                                 per_word_topics=True, eval_every=None)
         self.ldamodel = ldamodel
         if save_model:
@@ -251,37 +251,38 @@ class DynTM:
 
 
     ################## Topic Modelling Formatted output ##################
-    def __eval_text(self, x, cleaned_text=None):
+
+    def __eval_text(self, x, cleaned_text=None, include_bigrams=False):
         if cleaned_text is None:
             cleaned_text = str(self.text_column) + "_clean"
         doc_lst = list(x[cleaned_text])
         doc_lst = [word_tokenize(str(doc)) for doc in doc_lst]
 
-        # Compute bigrams.
-        # Add bigrams to docs (as per the linked NPMI paper).
-        bigram = Phrases(doc_lst, threshold=10e-5, scoring='npmi')
-        for idx in range(len(doc_lst)):
-            temp_bigram = []
-            for token in bigram[doc_lst[idx]]:
-                if '_' in token:
-                    # Token is a bigram, add to document.
-                    temp_bigram.append(token)
-            doc_lst.append(temp_bigram)
+        if include_bigrams:
+            # Compute bigrams.
+            # Add bigrams to docs (as per the linked NPMI paper).
+            bigram = Phrases(doc_lst, threshold=10e-5, scoring='npmi')
+            for idx in range(len(doc_lst)):
+                temp_bigram = []
+                for token in bigram[doc_lst[idx]]:
+                    if '_' in token:
+                        # Token is a bigram, add to document.
+                        temp_bigram.append(token)
+                doc_lst.append(temp_bigram)
+
         corpus = [self.dictionary.doc2bow(text) for text in doc_lst]
         all_topics = self.ldamodel.get_document_topics(corpus[0])
         for element in all_topics:
             x['Topic-'+str(element[0]+1)] = element[1]
         return x
 
-    
-    def suggest_num_topic(self, limit=15, start=2, step=1):
-        self.__prep_texts()
+    def suggest_num_topic(self, limit=15, start=2, step=1, include_bigrams=False):
+        self.__prep_texts(include_bigrams)
         optim_k = self.__chooseK(limit=limit, start=start, step=step)
         return optim_k
 
-
-    def fit(self, num_topics=1, save_model=False, dir_name=None, file_name=None):
-        self.__prep_texts()
+    def fit(self, num_topics=1, save_model=False, dir_name=None, file_name=None, include_bigrams=False):
+        self.__prep_texts(include_bigrams)
         self.__train_topicmodel(num_topics=num_topics, save_model=save_model, dir_name=dir_name, file_name=file_name)
         print("Model training complete.")
         
@@ -294,24 +295,22 @@ class DynTM:
         else:
             raise Exception("Train/Load a LDA model first")
 
-
-    def predict(self, data=None, text_column=None, return_df=True):
+    def predict(self, data=None, text_column=None, return_df=True, include_bigrams=False):
         if self.ldamodel is not None:
             if data is None:
                 data = self.processed_df
             print("--- Predicting on the texts ---")
-            data = data.progress_apply(lambda x: self.__eval_text(x, cleaned_text=text_column), axis=1)
+            data = data.progress_apply(lambda x: self.__eval_text(x, text_column, include_bigrams), axis=1)
             self.processed_df = data
             if return_df:
                 return data
         else:
             raise Exception("Train/Load a LDA model first")
 
-
-    def plot_topics(self, data=None, text_column=None, X_variable=None, return_df=False):
+    def plot_topics(self, data=None, text_column=None, X_variable=None, return_df=False, include_bigrams=False):
         if self.ldamodel is None:
             raise Exception("Train/Load a LDA model first")
-        temp_df = self.predict(data=data, text_column=text_column, return_df=True)
+        temp_df = self.predict(data=data, text_column=text_column, return_df=True, include_bigrams=include_bigrams)
         
         if (X_variable not in temp_df.columns and X_variable is not None):
             raise ValueError("Provide proper variable name as X-Category.")
@@ -335,7 +334,8 @@ class DynTM:
             fig = go.Figure()
             for item in tops:
                 fig.add_trace(go.Bar(x=tdf[X_variable], y=100.0*tdf[item].round(1), name=item))
-            fig.update_layout(barmode='stack', yaxis_visible=False, yaxis_showticklabels=False, template="plotly_white",
+            fig.update_layout(barmode='stack', yaxis_visible=False, yaxis_showticklabels=False, 
+                              template="plotly_white", xaxis_showticklabels=True, xaxis_type='category', xaxis_showgrid=False,
                               title_text=plot_title("Dynamic Topic Analysis"))
             fig.show()
 

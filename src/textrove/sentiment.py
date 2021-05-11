@@ -125,15 +125,13 @@ class Sentiment:
                 con_cnt += 1
             if wrd_list[i] in loughran_list[5]:
                 sup_cnt += 1
-        if (pos_cnt + neg_cnt + unc_cnt + lit_cnt + con_cnt + sup_cnt) > 0:
-            x['pos_shr'] = 100*pos_cnt / (pos_cnt + neg_cnt + unc_cnt + lit_cnt + con_cnt + sup_cnt)
-            x['neg_shr'] = 100*neg_cnt / (pos_cnt + neg_cnt + unc_cnt + lit_cnt + con_cnt + sup_cnt)
-            x['unc_shr'] = 100*unc_cnt / (pos_cnt + neg_cnt + unc_cnt + lit_cnt + con_cnt + sup_cnt)
-            x['lit_shr'] = 100*lit_cnt / (pos_cnt + neg_cnt + unc_cnt + lit_cnt + con_cnt + sup_cnt)
-            x['con_shr'] = 100*con_cnt / (pos_cnt + neg_cnt + unc_cnt + lit_cnt + con_cnt + sup_cnt)
-            x['sup_shr'] = 100*sup_cnt / (pos_cnt + neg_cnt + unc_cnt + lit_cnt + con_cnt + sup_cnt)
+        if (unc_cnt + lit_cnt + con_cnt + sup_cnt) > 0:
+            x['unc_shr'] = 100*unc_cnt / (unc_cnt + lit_cnt + con_cnt + sup_cnt)
+            x['lit_shr'] = 100*lit_cnt / (unc_cnt + lit_cnt + con_cnt + sup_cnt)
+            x['con_shr'] = 100*con_cnt / (unc_cnt + lit_cnt + con_cnt + sup_cnt)
+            x['sup_shr'] = 100*sup_cnt / (unc_cnt + lit_cnt + con_cnt + sup_cnt)
         else:
-            x['pos_shr'] = x['neg_shr'] = x['unc_shr'] = x['lit_shr'] = x['con_shr'] = x['sup_shr'] = 0.0
+            x['unc_shr'] = x['lit_shr'] = x['con_shr'] = x['sup_shr'] = 0.0
         if (pos_cnt + neg_cnt) > 0:
             x['sent_scr'] = (pos_cnt - neg_cnt) / (pos_cnt + neg_cnt)
         else:
@@ -143,34 +141,31 @@ class Sentiment:
     def __plot_loughran(self, temp_df, X_variable=None):
         if X_variable is None:
             avg_sent = round(temp_df['sent_scr'].mean(), 2)
-            avg_pos = round(temp_df['pos_shr'].mean(), 1)
-            avg_neg = round(temp_df['neg_shr'].mean(), 1)
             avg_unc = round(temp_df['unc_shr'].mean(), 1)
             avg_lit = round(temp_df['lit_shr'].mean(), 1)
             avg_con = round(temp_df['con_shr'].mean(), 1)
             avg_sup = round(temp_df['sup_shr'].mean(), 1)
-            labels = ['Positive', 'Negative', 'Uncertainty', 'Litigious', 'Constraining', 'Superfluous']
-            values = [avg_pos, avg_neg, avg_unc, avg_lit, avg_con, avg_sup]
+            labels = ['Uncertainty', 'Litigious', 'Constraining', 'Superfluous']
+            values = [avg_unc, avg_lit, avg_con, avg_sup]
             fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.4, hoverinfo="label+percent+name")])
             fig.update_layout(template="plotly_white", title_text=plot_title("Overall Sentiment Score: " + str(avg_sent)))
             fig.show()
         else:
-            tdf = temp_df[[X_variable, 'sent_scr', 'pos_shr', 'neg_shr', 'unc_shr',
-                            'lit_shr', 'con_shr', 'sup_shr']].groupby([X_variable]).mean()
+            tdf = temp_df[[X_variable, 'sent_scr', 'unc_shr', 'lit_shr', 'con_shr', 'sup_shr']].groupby([X_variable]).mean()
             tdf = tdf.sort_index().reset_index()
             fig = make_subplots(rows=3, cols=1, specs=[[{}], [{"rowspan": 2}], [None]], 
                                 shared_xaxes=True, vertical_spacing=0.00)
             fig.add_trace(go.Scatter(x=tdf[X_variable], y=tdf['sent_scr'], mode='lines+markers',
                                     line_shape='spline', name='Sentiment Score'), row=1, col=1)
-            fig.add_trace(go.Bar(x=tdf[X_variable], y=tdf['pos_shr'].round(1), name='Positive'), row=2, col=1)
-            fig.add_trace(go.Bar(x=tdf[X_variable], y=tdf['neg_shr'].round(1), name='Negative'), row=2, col=1)
+
             fig.add_trace(go.Bar(x=tdf[X_variable], y=tdf['unc_shr'].round(1), name='Uncertainty'), row=2, col=1)
             fig.add_trace(go.Bar(x=tdf[X_variable], y=tdf['lit_shr'].round(1), name='Litigious'), row=2, col=1)
             fig.add_trace(go.Bar(x=tdf[X_variable], y=tdf['con_shr'].round(1), name='Constraining'), row=2, col=1)
             fig.add_trace(go.Bar(x=tdf[X_variable], y=tdf['sup_shr'].round(1), name='Superfluous'), row=2, col=1)
-            fig.update_layout(barmode='stack', yaxis_visible=False, yaxis_showticklabels=False,
-                              yaxis2_visible=False, yaxis2_showticklabels=False, template="plotly_white",
-                              title_text=plot_title("Sentiment Analysis"))
+            fig.update_layout(barmode='stack', yaxis_visible=True, yaxis_showticklabels=True, xaxis_showticklabels=False,
+                              yaxis2_visible=False, yaxis2_showticklabels=False, yaxis_zeroline=True,
+                              xaxis2_showticklabels=True, xaxis2_type='category', xaxis_showgrid=False,
+                              template="plotly_white", title_text=plot_title("Sentiment Analysis"))
             fig.show()
     
     def __generate_sentiment(self):
@@ -252,9 +247,10 @@ class Sentiment:
             clrs = ["darkred" if (x < 0) else "darkgreen" for x in item['Weight']]
             fig1 = go.Figure(go.Bar(x=item['Weight'], y=item['Words'], orientation='h', marker=dict(color=clrs)))
             if X_variable is None:
-                fig1.update_layout(template="plotly_white",title_text=plot_title("Overall Word-Sentiment"))
+                fig1.update_layout(yaxis_showticklabels=True, yaxis_type='category',
+                                   template="plotly_white", title_text=plot_title("Overall Word-Sentiment"))
             else:
-                fig1.update_layout(template="plotly_white", 
+                fig1.update_layout(template="plotly_white", yaxis_showticklabels=True, yaxis_type='category',
                 title_text=plot_title(title = "Word-Sentiment", subtitle = str(X_variable) + " = " + str(cat_list[i])))
             fig1.show()
             
