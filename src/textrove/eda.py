@@ -69,8 +69,7 @@ class Documents:
         if str(text_column) in self.raw_df.columns:
             self.text_column = text_column
         else:
-            raise ValueError("Cannot find " +
-                             str(text_column) + " in the dataframe.")
+            raise ValueError("Cannot find " +str(text_column) + " in the dataframe.")
 
     ################## Text Cleaning ##################
 
