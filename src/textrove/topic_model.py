@@ -280,8 +280,6 @@ class DynTM:
             self.ldamodel = pickle.load(model_path + "/model_obj.pk")
             self.lda_vectorizer = pickle.load(model_path + "/vectorizer_obj.pk")
 
-            print('sklearn support yet to be added')
-
 
     def __show_topics_sklearn(self, num_words=30):
         keywords = np.array(self.lda_vectorizer.get_feature_names())
