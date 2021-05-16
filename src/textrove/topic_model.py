@@ -1,5 +1,7 @@
 from logging import raiseExceptions
 import os
+import time
+import pickle
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import pyLDAvis
@@ -71,7 +73,7 @@ class DynTM:
     
     ########### Prepare texts for Topic-Model ##############
     def __prep_texts(self, include_bigrams=False):
-        print("--- Preparing Texts for Model ---")
+        print("--- Preparing Texts for Model ---\n")
         cleaned_text = str(self.text_column) + "_clean"
         if self.algo == 'gensim':
             doc_lst = self.processed_df[cleaned_text].tolist()
@@ -168,7 +170,7 @@ class DynTM:
             print("--- Checking for best K between [" + str(start) + ", " + str(limit) +"] --- \n")
             for i in num_topics:
                 if i <= limit:
-                    print("--- Simulating Model with K=" + str(i) + " ---")
+                    print("--- Simulating Model with K=" + str(i) + " ---\n")
                 model_list[i] = LdaMulticore(corpus=self.corpus, id2word=self.dictionary,
                                 num_topics=i, passes=20, alpha='asymmetric', eta='auto', random_state=42, iterations=500,
                                 per_word_topics=True, eval_every=None)
@@ -179,7 +181,7 @@ class DynTM:
                 coherence_values.append(CoherenceModel(model=model_list[i], texts=self.texts, dictionary=self.dictionary,
                                         coherence='c_v').get_coherence())
             
-            print("--- Calculating Stability Index ---")
+            print("--- Calculating Stability Index ---\n")
             LDA_stability = {}
             for i in range(0, len(num_topics)-1):
                 jaccard_sims = []
@@ -192,7 +194,7 @@ class DynTM:
 
             mean_stabilities = [np.array(LDA_stability[i]).mean() for i in num_topics[:-1]]
 
-            print("--- Identifying Optimal K ---")
+            print("--- Identifying Optimal K ---\n")
             coh_sta_diffs = [coherence_values[i] - mean_stabilities[i] for i in range(0, len(num_topics)-1)]
             coh_sta_max = max(coh_sta_diffs)
             coh_sta_max_idxs = [i for i, j in enumerate(coh_sta_diffs) if j == coh_sta_max]
@@ -206,19 +208,23 @@ class DynTM:
             print("--- Checking for best K between [" + str(start) + ", " + str(limit) +"] --- \n")
             num_topics = list(range(start, limit+step, step))
             search_params = {'n_components': num_topics, 'learning_decay': [0.5, 0.7, 0.9]}
-            lda_obj = LatentDirichletAllocation(learning_method = 'batch', max_iter = 1000,
-                                                 max_doc_update_iter=1000,  n_jobs=-1, random_state=42)
+            lda_obj = LatentDirichletAllocation(learning_method = 'batch', max_iter = 20,
+                                                 max_doc_update_iter=500, n_jobs=-1, random_state=42)
             model = GridSearchCV(lda_obj, param_grid=search_params)
-            print("--- Identifying Optimal K ---")
+            print("--- Identifying Optimal K ---\n")
             model.fit(self.lda_dtm)
             optim_k = model.best_params_['n_components']
             optim_decay = model.best_params_['learning_decay']
-            log_likelyhoods_5 = [round(gscore.mean_validation_score)
-                                for gscore in model.grid_scores_ if gscore.parameters['learning_decay'] == 0.5]
-            log_likelyhoods_7 = [round(gscore.mean_validation_score)
-                                for gscore in model.grid_scores_ if gscore.parameters['learning_decay'] == 0.7]
-            log_likelyhoods_9 = [round(gscore.mean_validation_score)
-                                for gscore in model.grid_scores_ if gscore.parameters['learning_decay'] == 0.9]
+            # for parameter in model.cv_results_['params']:
+            #     if parameter['learning_decay'] == 0.5:
+            #         index = model.cv_results_['params'].index(parameter)
+            #         model.cv_results_['mean_test_score'][index]
+            log_likelyhoods_5 = [round(model.cv_results_['mean_test_score'][model.cv_results_['params'].index(parameter)])
+                                 for parameter in model.cv_results_['params'] if parameter['learning_decay'] == 0.5]
+            log_likelyhoods_7 = [round(model.cv_results_['mean_test_score'][model.cv_results_['params'].index(parameter)])
+                                 for parameter in model.cv_results_['params'] if parameter['learning_decay'] == 0.7]
+            log_likelyhoods_9 = [round(model.cv_results_['mean_test_score'][model.cv_results_['params'].index(parameter)])
+                                 for parameter in model.cv_results_['params'] if parameter['learning_decay'] == 0.9]
             self.__plot_chooseK_sklearn(num_topics, log_likelyhoods_5, log_likelyhoods_7, log_likelyhoods_9, optim_k)
 
         return (optim_k, optim_decay)
@@ -239,7 +245,7 @@ class DynTM:
                                     passes=20, alpha='asymmetric', eta='auto', random_state=42, iterations=1000, 
                                     per_word_topics=True, eval_every=None)
         elif self.algo == 'sklearn':
-            ldamodel = LatentDirichletAllocation(n_components=self.num_topics, learning_method='batch', max_iter=1000,
+            ldamodel = LatentDirichletAllocation(n_components=self.num_topics, learning_method='batch', max_iter=20,
                                                  learning_decay=optim_decay, max_doc_update_iter=1000,  n_jobs=-1, random_state=42)
             lda_output = ldamodel.fit_transform(self.lda_dtm)
 
@@ -249,27 +255,31 @@ class DynTM:
         
     
     def __save_topicmodel(self, dir_name=None, file_name=None):     # need to add sklearn support
+        if dir_name is None:
+            dir_name = MODEL_PATH
+        if file_name is None:
+            file_name = "LDA_Model"
+        print("--- Saving Model ---\n")
         if self.algo == 'gensim':
-            if dir_name is None:
-                dir_name = MODEL_PATH
-            if file_name is None:
-                file_name = "LDA_Model"
-            print("--- Saving Model ---")
             self.model_path = str(dir_name + file_name.strip() + " " + str(datetime.now()))
             self.ldamodel.save(self.model_path + "/model_obj")
             self.dictionary.save(self.model_path + "/dictionary_obj")
         else:
-            print('sklearn support yet to be added')
+            pickle.dump(self.ldamodel, self.model_path + "/model_obj.pk")
+            pickle.dump(self.lda_vectorizer, self.model_path + "/vectorizer_obj.pk")
 
 
     def load_topicmodel(self, model_path=None):         # need to add sklearn support
+        print("--- Loading Model ---\n")
         if self.algo == 'gensim':
-            print("--- Loading Model ---")
             self.model_path = model_path
             self.ldamodel = LdaMulticore.load(model_path + "/model_obj", mmap='r')
             self.dictionary = Dictionary.load(model_path + "/dictionary_obj", mmap='r')
             self.num_topics = self.ldamodel.num_topics
         else:
+            self.ldamodel = pickle.load(model_path + "/model_obj.pk")
+            self.lda_vectorizer = pickle.load(model_path + "/vectorizer_obj.pk")
+
             print('sklearn support yet to be added')
 
 
@@ -281,6 +291,7 @@ class DynTM:
             top_keyword_locs = (-topic_weights).argsort()[:num_words]
             topic_keywords.append(keywords.take(top_keyword_locs))
             print('Topic-'+str(topicid+1)+": ", keywords.take(top_keyword_locs))
+            print("\n")
             topicid += 1
         topic_df = pd.DataFrame(topic_keywords)
         topic_df = topic_df.T
@@ -291,7 +302,7 @@ class DynTM:
     def __eval_topicmodel(self, return_df=True, evaluation='complete'):
         if self.algo == 'gensim':
             if evaluation == 'complete':
-                print("--- Evaluating Model Metrics ---")
+                print("--- Evaluating Model Metrics ---\n")
                 coherencemodel = CoherenceModel(model=self.ldamodel, texts=self.texts, dictionary=self.dictionary, coherence='c_v')
                 top_topics = self.ldamodel.top_topics(corpus=self.corpus, texts=self.texts, dictionary=self.dictionary, 
                                                         window_size=None, coherence='c_v', topn=20)
@@ -316,6 +327,7 @@ class DynTM:
                 print('Log Likelihood: ', self.ldamodel.score(self.lda_dtm))
                 # Perplexity: Lower the better. Perplexity = exp(-1. * log-likelihood per word)
                 print('Perplexity: ', self.ldamodel.perplexity(self.lda_dtm))
+                print("\n")
             topic_df = self.__show_topics_sklearn(num_words=30)
 
         self.topic_map = topic_df
@@ -378,7 +390,7 @@ class DynTM:
     def fit(self, num_topics=1, save_model=False, dir_name=None, file_name=None, include_bigrams=False):
         self.__prep_texts(include_bigrams)
         self.__train_topicmodel(num_topics=num_topics, save_model=save_model, dir_name=dir_name, file_name=file_name)
-        print("Model training complete.")
+        print("Model training complete.\n")
         
 
     def evaluate(self, save_vis=False):
@@ -394,7 +406,8 @@ class DynTM:
         if self.ldamodel is not None:
             if data is None:
                 data = self.processed_df
-            print("--- Predicting on the texts ---")
+            print("--- Predicting on the texts ---\n")
+            time.sleep(2)
             data = data.progress_apply(lambda x: self.__eval_text(x, text_column, include_bigrams), axis=1)
             self.processed_df = data
             if return_df:
@@ -434,7 +447,7 @@ class DynTM:
             tdf = tdf.sort_index().reset_index()
             fig = go.Figure()
             for item in tops:
-                fig.add_trace(go.Bar(x=tdf[X_variable], y=100.0*tdf[item].round(1), name=item))
+                fig.add_trace(go.Bar(x=tdf[X_variable], y=100.0*tdf[item], name=item))
             fig.update_layout(barmode='stack', yaxis_visible=False, yaxis_showticklabels=False, 
                               template="plotly_white", xaxis_showticklabels=True, xaxis_type='category', xaxis_showgrid=False,
                               title_text=plot_title("Dynamic Topic Analysis"))

@@ -122,7 +122,6 @@ class Documents:
 
         # remove accented characters
         document = self.__remove_accented_chars(document)
-        document = re.sub(r"x+", "", document)
         document = re.sub(r"(<br/>)", "", document)
         document = re.sub(r"(<a).*(>).*(</a>)", "", document)
         document = re.sub(r"(&amp)", "", document)
@@ -157,15 +156,15 @@ class Documents:
         document = " ".join(document)
 
         # lemmatize
-        # document = [token.lemma_ for token in nlp(document) if not token.is_stop]
-        # document = [word for word in document if not word in self.stop_words]
-        # document = " ".join(document)
-
-        document = document.split()
-        lemmatizer = WordNetLemmatizer()
-        document = [lemmatizer.lemmatize(word, self.__get_wordnet_pos(word)) for word in document]
+        document = [token.lemma_ for token in nlp(document) if not token.is_stop]
         document = [word for word in document if not word in self.stop_words]
         document = " ".join(document)
+
+        # document = document.split()
+        # lemmatizer = WordNetLemmatizer()
+        # document = [lemmatizer.lemmatize(word, self.__get_wordnet_pos(word)) for word in document]
+        # document = [word for word in document if not word in self.stop_words]
+        # document = " ".join(document)
 
         return document
 
