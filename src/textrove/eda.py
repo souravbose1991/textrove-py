@@ -209,7 +209,7 @@ class Documents:
 
     ##################### Exploratory Data Analysis #####################
 
-    def explore(self, ngram_range=(1, 1), nwords=20, min_freq=0.05):
+    def explore(self, ngram_range=(1, 1), nwords=20, min_freq=0.05, X_variable=None):
         cleaned_text = str(self.text_column) + "_clean"
         if not self.clean_status:
             self.prep_docs(return_df=False)
@@ -250,6 +250,35 @@ class Documents:
                 fig2.update_layout(xaxis_showticklabels=True, xaxis_type='category',
                                    template="plotly_white", title_text=plot_title("Rare Phrases " + str(ng) + "-grams"))
                 fig2.show()
+
+        if X_variable is not None:
+            x_unique = self.processed_df[X_variable].unique()
+            all_freq_df = pd.DataFrame()
+            all_rare_df = pd.DataFrame()
+
+            for value in x_unique:
+                freq_df = pd.DataFrame()
+                rare_df = pd.DataFrame()
+                for ng in range(self.ngram_range[0], self.ngram_range[1]+1):
+                    subset_data = self.processed_df.loc[self.processed_df[X_variable]==value]
+                    temp_df1 = self.__get_ngrams(subset_data[cleaned_text], nwords=nwords, min_freq=min_freq,
+                                                 ngram=ng, most_frequent_first=True)
+                    temp_df1 = temp_df1.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
+                    temp_df1['Ngram'] = ng
+                    temp_df2 = self.__get_ngrams(subset_data[cleaned_text], nwords=nwords, min_freq=min_freq,
+                                                 ngram=ng, most_frequent_first=False)
+                    temp_df2 = temp_df2.groupby('Phrase').sum()['Count'].sort_values(ascending=False).reset_index()
+                    temp_df2['Ngram'] = ng
+                    freq_df = freq_df.append(temp_df1)
+                    rare_df = rare_df.append(temp_df2)
+                
+                freq_df['Year'] = value
+                rare_df['Year'] = value
+                all_freq_df = all_freq_df.append(freq_df)
+                all_rare_df = all_rare_df.append(rare_df)
+            
+            return (all_freq_df, all_rare_df)
+
 
     def create_wordcloud(self):
         cleaned_text = str(self.text_column) + "_clean"
