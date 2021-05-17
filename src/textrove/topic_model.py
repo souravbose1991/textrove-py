@@ -333,6 +333,20 @@ class DynTM:
             return self.topic_map
 
 
+    def __get_imp_words_sklearn(self, text, num_words=30):
+        mytext_3 = [text]
+        mytext_4 = self.lda_vectorizer.transform(mytext_3)
+        keywords = np.array(self.lda_vectorizer.get_feature_names())
+        # topic_probability_scores = self.ldamodel.transform(mytext_4)
+        top_keyword_locs = (-mytext_4.todense()).argsort()[0, :num_words]
+        topic_df = self.__show_topics_sklearn(num_words=30)
+        imp_dict = {}
+        for i in range(topic_df.shape[1]):
+            topic_words = topic_df['Topic-'+str(i+1)].tolist()
+            imp_dict['Topic-'+str(i+1)] = [word for word in keywords.take(top_keyword_locs)[0] if word in topic_words]
+        return imp_dict
+
+
     def __visualize(self, save_vis=False):
         # Visualize the topics
         if self.algo == 'gensim':
@@ -427,8 +441,18 @@ class DynTM:
 
         if self.algo == 'gensim':
             num_topics = self.ldamodel.num_topics
+            imp_dict = {}
         else:
             num_topics = self.ldamodel.n_components
+            if X_variable is not None:
+                imp_dict = {}
+                if text_column is None:
+                    text_column = str(self.text_column) + "_clean"
+                x_unique = temp_df[X_variable].unique()
+                for value in x_unique:
+                    text = temp_df.loc[temp_df[X_variable]==value][text_column].tolist()
+                    text = ' '.join(text)
+                    imp_dict[value] = self.__get_imp_words_sklearn(text, num_words=30)
 
         topic_shr = {}
         if X_variable is None:
@@ -452,7 +476,7 @@ class DynTM:
             fig.show()
 
         if return_df:
-            return temp_df
+            return (temp_df, imp_dict)
         
 
 
