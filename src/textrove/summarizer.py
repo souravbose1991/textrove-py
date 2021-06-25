@@ -1,4 +1,5 @@
-
+# Create summarization based on SPACY (Text-Rank) and remove Key-word detection
+# Else use Gensim 3.8
 from gensim.summarization import summarize, keywords
 from .eda import Documents
 from . import utils
