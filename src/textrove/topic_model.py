@@ -281,15 +281,16 @@ class DynTM:
             self.lda_vectorizer = pickle.load(model_path + "/vectorizer_obj.pk")
 
 
-    def __show_topics_sklearn(self, num_words=30):
+    def __show_topics_sklearn(self, num_words=30, verbose=True):
         keywords = np.array(self.lda_vectorizer.get_feature_names())
         topic_keywords = []
         topicid = 0
         for topic_weights in self.ldamodel.components_:
             top_keyword_locs = (-topic_weights).argsort()[:num_words]
             topic_keywords.append(keywords.take(top_keyword_locs))
-            print('Topic-'+str(topicid+1)+": ", keywords.take(top_keyword_locs))
-            print("\n")
+            if verbose:
+                print('Topic-'+str(topicid+1)+": ", keywords.take(top_keyword_locs))
+                print("\n")
             topicid += 1
         topic_df = pd.DataFrame(topic_keywords)
         topic_df = topic_df.T
@@ -339,7 +340,7 @@ class DynTM:
         keywords = np.array(self.lda_vectorizer.get_feature_names())
         # topic_probability_scores = self.ldamodel.transform(mytext_4)
         top_keyword_locs = (-mytext_4.todense()).argsort()[0, :num_words]
-        topic_df = self.__show_topics_sklearn(num_words=30)
+        topic_df = self.__show_topics_sklearn(num_words=30, verbose=False)
         imp_dict = {}
         for i in range(topic_df.shape[1]):
             topic_words = topic_df['Topic-'+str(i+1)].tolist()
