@@ -1,3 +1,7 @@
 {
-    "python.pythonPath": "G:\\Users\\soura\\miniconda3\\python.exe"
+    "python.pythonPath": "G:\\Users\\soura\\miniconda3\\python.exe",
+    "terminal.integrated.defaultProfile.windows": "Command Prompt",
+    "terminal.integrated.enableBell": true,
+    "python.analysis.completeFunctionParens": true,
+    "python.autoComplete.addBrackets": true
 }
