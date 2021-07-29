@@ -48,7 +48,6 @@ class NER:
         else:
             raise TypeError("Only an object of Documents Class can be passed.")
 
-
     def __get_entity(self, x, text_column=None):
         if text_column is None:
             text_column = str(self.text_column)
@@ -60,7 +59,6 @@ class NER:
         ner_txt = ner_txt.strip()
         x[entity_text] = ner_txt
         return x
-
 
     def generate_ner(self):
         temp_df = self.processed_df

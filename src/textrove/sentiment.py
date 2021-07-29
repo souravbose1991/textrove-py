@@ -5,6 +5,10 @@ from .ploty_template import plot_title
 import pandas as pd
 from .eda import Documents
 from sklearn.feature_extraction.text import CountVectorizer
+import nltk
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from textblob import TextBlob
+# nltk.download('vader_lexicon')
 # import importlib.resources as pkg_resources
 from . import utils
 import os
@@ -140,6 +144,23 @@ class Sentiment:
             x['sent_scr'] = 0.0
         return x
 
+    def __sent_vader(self, x):
+        cleaned_text = str(self.text_column) + "_clean"
+        analyzer = SentimentIntensityAnalyzer()
+        vs = analyzer.polarity_scores(x[cleaned_text])
+        x['sent_scr'] = vs['compound']
+        x['pos_shr'] = vs['pos']
+        x['neu_shr'] = vs['neu']
+        x['neg_shr'] = vs['neg']
+        return x
+
+    def __sent_textblob(self, x):
+        cleaned_text = str(self.text_column) + "_clean"
+        vs = TextBlob(x[cleaned_text])
+        x['sent_scr'] = vs.sentiment.polarity
+        x['subj_shr'] = vs.sentiment.subjectivity
+        return x
+
     def __plot_loughran(self, temp_df, X_variable=None):
         if X_variable is None:
             avg_sent = round(temp_df['sent_scr'].mean(), 2)
@@ -174,7 +195,49 @@ class Sentiment:
                               template="plotly_white", title_text=plot_title("Sentiment Analysis"))
             fig.show()
     
-    def __generate_sentiment(self):
+    def __plot_vader(self, temp_df, X_variable=None):
+        if X_variable is None:
+            avg_sent = round(temp_df['sent_scr'].mean(), 2)
+            avg_pos = round(temp_df['pos_shr'].mean(), 1)
+            avg_neu = round(temp_df['neu_shr'].mean(), 1)
+            avg_neg = round(temp_df['neg_shr'].mean(), 1)
+            labels = ['Positive', 'Neutral', 'Negative']
+            values = [avg_pos, avg_neu, avg_neg]
+            fig = go.Figure(data=[go.Pie(
+                labels=labels, values=values, hole=.4, hoverinfo="label+percent+name")])
+            fig.update_layout(template="plotly_white", title_text=plot_title(
+                "Overall Sentiment Score: " + str(avg_sent)))
+            fig.show()
+        else:
+            tdf = temp_df[[X_variable, 'sent_scr', 'pos_shr', 'neu_shr', 'neg_shr']].groupby([X_variable]).mean()
+            tdf = tdf.sort_index().reset_index()
+            fig = make_subplots(rows=3, cols=1, specs=[[{}], [{"rowspan": 2}], [None]],
+                                shared_xaxes=True, vertical_spacing=0.00)
+            fig.add_trace(go.Scatter(x=tdf[X_variable], y=tdf['sent_scr'], mode='lines+markers',
+                                     line_shape='spline', name='Sentiment Score'), row=1, col=1)
+            fig.add_trace(go.Bar(x=tdf[X_variable], y=tdf['pos_shr'].round(
+                1), name='Positive'), row=2, col=1)
+            fig.add_trace(go.Bar(x=tdf[X_variable], y=tdf['neu_shr'].round(
+                1), name='Neutral'), row=2, col=1)
+            fig.add_trace(go.Bar(x=tdf[X_variable], y=tdf['neg_shr'].round(
+                1), name='Negative'), row=2, col=1)
+            fig.update_layout(barmode='stack', yaxis_visible=True, yaxis_showticklabels=True, xaxis_showticklabels=False,
+                              yaxis2_visible=False, yaxis2_showticklabels=False, yaxis_zeroline=True,
+                              xaxis2_showticklabels=True, xaxis2_type='category', xaxis_showgrid=False,
+                              template="plotly_white", title_text=plot_title("Sentiment Analysis"))
+            fig.show()
+
+    def __plot_textblob(self, temp_df, X_variable):
+            tdf = temp_df[[X_variable, 'sent_scr']].groupby([X_variable]).mean()
+            tdf = tdf.sort_index().reset_index()
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=tdf[X_variable], y=tdf['sent_scr'], mode='lines+markers',
+                                     line_shape='spline', name='Sentiment Score'))
+            fig.update_layout(yaxis_visible=True, yaxis_showticklabels=True, xaxis_showticklabels=False, yaxis_zeroline=True,
+                              xaxis_showgrid=False, template="plotly_white", title_text=plot_title("Sentiment Analysis"))
+            fig.show()
+
+    def generate_sentiment(self):
         temp_df = self.processed_df
         if self.sent_method == 'lexical':
             if self.sent_lexicon == 'loughran':
@@ -182,6 +245,10 @@ class Sentiment:
                 self.lexi_dict['Positive'] = loughran_list[0]
                 self.lexi_dict['Negative'] = loughran_list[1]
                 temp_df = temp_df.progress_apply(lambda x: self.__sent_loughran(x, loughran_list=loughran_list), axis=1)
+        elif self.sent_method == 'vader':
+            temp_df = temp_df.progress_apply(lambda x: self.__sent_vader(x), axis=1)
+        elif self.sent_method == 'textblob':
+            temp_df = temp_df.progress_apply(lambda x: self.__sent_textblob(x), axis=1)
         self.processed_df = temp_df
         return temp_df
 
@@ -228,18 +295,27 @@ class Sentiment:
         return (tdf_list, cat_list)
 
     def plot_sentiment(self, X_variable=None, return_df=False):
-        temp_df = self.__generate_sentiment()
+        temp_df = self.generate_sentiment()
         if (X_variable not in temp_df.columns and X_variable is not None):
             raise ValueError("Provide proper variable name as X-Category.")
         if self.sent_method == 'lexical':
             if self.sent_lexicon == 'loughran':
                 self.__plot_loughran(temp_df, X_variable=X_variable)
+        elif self.sent_method == 'vader':
+            self.__plot_vader(temp_df, X_variable=X_variable)
+        elif self.sent_method == 'textblob':
+            if X_variable is None:
+                raise ValueError("Need a X-Variable to plot with TextBlob")
+            else:
+                self.__plot_textblob(temp_df, X_variable=X_variable)
         if return_df:
             return temp_df
 
     def plot_word_sentiment(self, new_df=None, X_variable=None):
+        if self.sent_method != 'lexical':
+            raise ValueError("Word Sentiment can be plotted only with Lexical-based Sentiments")
         if new_df is None:
-            temp_df = self.__generate_sentiment()
+            temp_df = self.generate_sentiment()
         else:
             cleaned_text = str(self.text_column) + "_clean"
             if cleaned_text in new_df.columns:
