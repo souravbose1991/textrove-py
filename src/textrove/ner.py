@@ -48,70 +48,26 @@ class NER:
         else:
             raise TypeError("Only an object of Documents Class can be passed.")
 
-    ################## Text Cleaning ##################
 
-    def __flatten(self, listOfLists):
-        "Flatten one level of nesting"
-        return list(chain.from_iterable(listOfLists))
+    def __get_entity(self, x, text_column=None):
+        if text_column is None:
+            text_column = str(self.text_column)
+        entity_text = str(text_column) + "_entity"
+        doc = nlp(x[text_column])
+        ent_list = [(ent.text, ent.label_) for ent in doc.ents]
+        ner_txt = '--'.join(ent_list)
+        ner_txt = re.sub('\n', ' ', ner_txt)
+        ner_txt = ner_txt.strip()
+        x[entity_text] = ner_txt
+        return x
 
-    def __strip_html_tags(self, text):
-        soup = BeautifulSoup(text, "html.parser")
-        [s.extract() for s in soup(['iframe', 'script'])]
-        stripped_text = soup.get_text()
-        stripped_text = re.sub(r'[\r|\n|\r\n]+', '\n', stripped_text)
-        return stripped_text
 
-    def __remove_accented_chars(self, text):
-        text = unicodedata.normalize('NFKD', text).encode(
-            'ascii', 'ignore').decode('utf-8', 'ignore')
-        return text
+    def generate_ner(self):
+        temp_df = self.processed_df
+        temp_df = temp_df.progress_apply(lambda x: self.__get_entity(x), axis=1)
+        self.processed_df = temp_df
+        return temp_df
 
-    # def __expand_contractions(self, text):
-    #     return contractions.fix(text)
-
-    def __remove_special_characters(self, text, remove_digits=False):
-        pattern = r'[^a-zA-Z0-9\s]' if not remove_digits else r'[^a-zA-Z\s]'
-        text = re.sub(pattern, '', text)
-        return text
-
-    def __clean_text(self, document):
-        # converting to text
-        document = str(document)
-
-        # strip HTML
-        document = self.__strip_html_tags(document)
-
-        # lower case
-        # document = document.lower()
-
-        # remove extra newlines (often might be present in really noisy text)
-        document = document.translate(document.maketrans("\n\t\r", "   "))
-
-        # remove accented characters
-        document = self.__remove_accented_chars(document)
-        document = re.sub(r"x+", "", document)
-        document = re.sub(r"X+", "", document)
-        document = re.sub(r"(<br/>)", "", document)
-        document = re.sub(r"(<a).*(>).*(</a>)", "", document)
-        document = re.sub(r"(&amp)", "", document)
-        document = re.sub(r"(&gt)", "", document)
-        document = re.sub(r"(&lt)", "", document)
-        document = re.sub(r"(\xa0)", " ", document)
-
-        # remove special characters and\or digits
-        # insert spaces between special characters to isolate them
-        special_char_pattern = re.compile(r'([{.(-)!}])')
-        document = special_char_pattern.sub(" \\1 ", document)
-        document = self.__remove_special_characters(document, remove_digits=False)
-
-        # remove extra whitespace
-        document = re.sub(' +', ' ', document)
-        document = document.strip()
-
-        # expand contractions
-        # document = self.__expand_contractions(document)
-
-        return document
 
 
 
