@@ -41,11 +41,11 @@ global UTIL_PATH, STOP_WORD
 UTIL_PATH = os.path.abspath(os.path.dirname(utils.__file__))
 
 ################## Stopwords list ##################
-stop1 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
+stop1 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower()).strip()
          for x in open(UTIL_PATH +"/stopwords/"+"StopWords_Generic.txt", "r")]
-stop2 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
+stop2 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower()).strip()
          for x in open(UTIL_PATH + "/stopwords/"+"StopWords_GenericLong.txt", "r")]
-stop3 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
+stop3 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower()).strip()
          for x in open(UTIL_PATH + "/stopwords/"+"StopWords_DatesandNumbers.txt", "r")]
 
 STOP_WORD = list(set(list(stopwords.words("english")) + list(STOPWORDS) + stop1 + stop2 + stop3))
@@ -72,7 +72,6 @@ class Documents:
             raise ValueError("Cannot find " +str(text_column) + " in the dataframe.")
 
     ################## Text Cleaning ##################
-
     def __flatten(self, listOfLists):
         "Flatten one level of nesting"
         return list(chain.from_iterable(listOfLists))
@@ -278,7 +277,6 @@ class Documents:
                 all_rare_df = all_rare_df.append(rare_df)
             
             return (all_freq_df, all_rare_df)
-
 
     def create_wordcloud(self):
         cleaned_text = str(self.text_column) + "_clean"

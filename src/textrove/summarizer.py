@@ -25,11 +25,11 @@ global UTIL_PATH, STOP_WORD
 UTIL_PATH = os.path.abspath(os.path.dirname(utils.__file__))
 
 ################## Stopwords list ##################
-stop1 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
+stop1 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower()).strip()
          for x in open(UTIL_PATH + "/stopwords/"+"StopWords_Generic.txt", "r")]
-stop2 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
+stop2 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower()).strip()
          for x in open(UTIL_PATH + "/stopwords/"+"StopWords_GenericLong.txt", "r")]
-stop3 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower())
+stop3 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower()).strip()
          for x in open(UTIL_PATH + "/stopwords/"+"StopWords_DatesandNumbers.txt", "r")]
 
 STOP_WORD = list(set(list(stopwords.words("english")) + list(STOPWORDS) + list(STOP_WORDS) + stop1 + stop2 + stop3))
@@ -56,7 +56,6 @@ class Summary:
                 self.text_column = self.doc_obj.text_column
         else:
             raise TypeError("Only an object of Documents Class can be passed.")
-
 
     def __summarize(self, text, size):
         doc = nlp(text)
@@ -92,7 +91,6 @@ class Summary:
             summary = text
         return summary
 
-    
     def __get_summary(self, x, text_column=None):
         if text_column is None:
             text_column = str(self.text_column)
@@ -105,7 +103,6 @@ class Summary:
         summ = summ.strip()
         x[summary_text] = summ
         return x
-
 
     def generate_results(self):
         temp_df = self.processed_df
