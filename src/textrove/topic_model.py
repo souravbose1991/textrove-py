@@ -1,6 +1,7 @@
 from logging import raiseExceptions
 import os
 import time
+from datetime import datetime
 import pickle
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
@@ -32,9 +33,9 @@ global MODEL_PATH
 MODEL_PATH = os.path.abspath(os.path.dirname(models.__file__))
 
 
-################## Dynamic Topic Modelling ##################
+################## TODO: Temporal Topic Modelling ##################
 class DynTM:
-    def __init__(self, documents_object=None, num_topics=None, algo=None):
+    def __init__(self, documents_object, num_topics=None, algo=None):
         if isinstance(documents_object, Documents):
             self.doc_obj = documents_object
             self.raw_df = documents_object.raw_df
@@ -69,8 +70,7 @@ class DynTM:
         self.texts = None
         self.lda_dtm = None
         self.lda_vectorizer = None
-
-    
+   
     ########### Prepare texts for Topic-Model ##############
     def __prep_texts(self, include_bigrams=False):
         print("--- Preparing Texts for Model ---\n")
@@ -106,8 +106,6 @@ class DynTM:
             self.lda_vectorizer = vectorizer
             self.lda_dtm = data_vectorized
 
-
-
     ################## Optimal Topic Counts ##################
     def __jaccard_similarity(self, topic_1, topic_2):
         """
@@ -121,7 +119,6 @@ class DynTM:
         union = set(topic_1).union(set(topic_2))
 
         return float(len(intersection))/float(len(union))
-
 
     def __plot_chooseK(self, num_topics, mean_stabilities, coherence_values, perplexity_values, optim_k):
         miny1 = min(perplexity_values[:-1])*0.85
@@ -144,7 +141,6 @@ class DynTM:
                           title_text=plot_title("Optimal Topic Analysis"))
         fig.show()
     
-
     def __plot_chooseK_sklearn(self, num_topics, log_likelyhoods_5, log_likelyhoods_7, log_likelyhoods_9, optim_k):
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=num_topics, y=log_likelyhoods_5, mode='lines+markers',
@@ -158,8 +154,7 @@ class DynTM:
         fig.update_layout(yaxis_visible=False, yaxis_showticklabels=False, xaxis_title='Number of Topics',
                           template="plotly_white", title_text=plot_title("Optimal Topic Analysis"))
         fig.show()
-
-    
+   
     def __chooseK(self, limit=15, start=2, step=1):
         if self.algo=='gensim':
             coherence_values = []
@@ -229,11 +224,12 @@ class DynTM:
 
         return (optim_k, optim_decay)
 
-
-    def __train_topicmodel(self, num_topics=1, save_model=False, dir_name=None, file_name=None):
+    def __train_topicmodel(self, num_topics=1):
         if num_topics <= 1:
             if self.num_topics == 1:
                 self.num_topics, optim_decay = self.__chooseK(limit=20, start=2, step=1)
+            else:
+                raise ValueError("Please enter num_topics '> 1' or put '= 1' if you want suggestions")
         else:
             # if self.num_topics == 1:
             self.num_topics = num_topics
@@ -250,26 +246,23 @@ class DynTM:
             lda_output = ldamodel.fit_transform(self.lda_dtm)
 
         self.ldamodel = ldamodel
-        if save_model:
-            self.__save_topicmodel(dir_name=dir_name, file_name=file_name)
         
-    
-    def __save_topicmodel(self, dir_name=None, file_name=None):     # need to add sklearn support
+    def save_topicmodel(self, dir_name=None, file_name=None):     
         if dir_name is None:
             dir_name = MODEL_PATH
         if file_name is None:
-            file_name = "LDA_Model"
+            file_name = "LDA Model"
         print("--- Saving Model ---\n")
         if self.algo == 'gensim':
-            self.model_path = str(dir_name + file_name.strip() + " " + str(datetime.now()))
+            self.model_path = str(dir_name + "/" + file_name.strip() + "/" + str(datetime.now()))
             self.ldamodel.save(self.model_path + "/model_obj")
             self.dictionary.save(self.model_path + "/dictionary_obj")
         else:
             pickle.dump(self.ldamodel, self.model_path + "/model_obj.pk")
             pickle.dump(self.lda_vectorizer, self.model_path + "/vectorizer_obj.pk")
+        print("Model saved at ", self.model_path)
 
-
-    def load_topicmodel(self, model_path=None):         # need to add sklearn support
+    def load_topicmodel(self, model_path):         
         print("--- Loading Model ---\n")
         if self.algo == 'gensim':
             self.model_path = model_path
@@ -279,7 +272,7 @@ class DynTM:
         else:
             self.ldamodel = pickle.load(model_path + "/model_obj.pk")
             self.lda_vectorizer = pickle.load(model_path + "/vectorizer_obj.pk")
-
+            self.num_topics = self.ldamodel.n_components
 
     def __show_topics_sklearn(self, num_words=30, verbose=True):
         keywords = np.array(self.lda_vectorizer.get_feature_names())
@@ -296,7 +289,6 @@ class DynTM:
         topic_df = topic_df.T
         topic_df.columns = ['Topic-'+str(i+1) for i in range(topic_df.shape[1])]
         return topic_df
-
 
     def __eval_topicmodel(self, return_df=True, evaluation='complete'):
         if self.algo == 'gensim':
@@ -333,7 +325,6 @@ class DynTM:
         if return_df:
             return self.topic_map
 
-
     def __get_imp_words_sklearn(self, text, num_words=30):
         mytext_3 = [text]
         mytext_4 = self.lda_vectorizer.transform(mytext_3)
@@ -347,7 +338,6 @@ class DynTM:
             imp_dict['Topic-'+str(i+1)] = [word for word in keywords.take(top_keyword_locs)[0] if word in topic_words]
         return imp_dict
 
-
     def __visualize(self, save_vis=False):
         # Visualize the topics
         if self.algo == 'gensim':
@@ -359,9 +349,7 @@ class DynTM:
             pyLDAvis.save_html(vis, self.model_path + "/model_vis.html")
         return vis
 
-
     ################## Topic Modelling Formatted output ##################
-
     def __eval_text(self, x, cleaned_text=None, include_bigrams=False):
         if cleaned_text is None:
             cleaned_text = str(self.text_column) + "_clean"
@@ -393,19 +381,16 @@ class DynTM:
                 x['Topic-'+str(element+1)] = all_topics[0, element]
         return x
 
-
     def suggest_num_topic(self, limit=15, start=2, step=1, include_bigrams=False):
         self.__prep_texts(include_bigrams)
         optim_k, decay = self.__chooseK(limit=limit, start=start, step=step)
         return (optim_k, decay)
 
-
     def fit(self, num_topics=1, save_model=False, dir_name=None, file_name=None, include_bigrams=False):
         self.__prep_texts(include_bigrams)
-        self.__train_topicmodel(num_topics=num_topics, save_model=save_model, dir_name=dir_name, file_name=file_name)
+        self.__train_topicmodel(num_topics=num_topics)
         print("Model training complete.\n")
         
-
     def evaluate(self, save_vis=False):
         if self.ldamodel is not None:
             topic_df = self.__eval_topicmodel(return_df=True)
@@ -413,7 +398,6 @@ class DynTM:
             return (topic_df, vis)
         else:
             raise Exception("Train/Load a LDA model first")
-
 
     def predict(self, data=None, text_column=None, return_df=True, include_bigrams=False):
         if self.ldamodel is not None:
@@ -427,7 +411,6 @@ class DynTM:
                 return data
         else:
             raise Exception("Train/Load a LDA model first")
-
 
     def plot_topics(self, data=None, text_column=None, X_variable=None, return_df=False, include_bigrams=False):
         if self.ldamodel is None:

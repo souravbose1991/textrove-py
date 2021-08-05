@@ -23,7 +23,10 @@ from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import RegexpTokenizer
 # import importlib.resources as pkg_resources
 from . import utils
+from . import models
 import os
+import pickle
+from datetime import datetime
 from tqdm.autonotebook import tqdm  
 tqdm.pandas()
 
@@ -32,13 +35,17 @@ warnings.filterwarnings("ignore")
 
 # Spacy
 import spacy
-nlp = spacy.load('en_core_web_md')
+from spacy.lang.en.stop_words import STOP_WORDS
+nlp = spacy.load('en_core_web_trf')
 
 global UTIL_PATH, STOP_WORD
 # with pkg_resources.path('utils', '.') as p:
 #     UTIL_PATH = str(p)
 
 UTIL_PATH = os.path.abspath(os.path.dirname(utils.__file__))
+
+global MODEL_PATH
+MODEL_PATH = os.path.abspath(os.path.dirname(models.__file__))
 
 ################## Stopwords list ##################
 stop1 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower()).strip()
@@ -48,8 +55,7 @@ stop2 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower()).strip()
 stop3 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower()).strip()
          for x in open(UTIL_PATH + "/stopwords/"+"StopWords_DatesandNumbers.txt", "r")]
 
-STOP_WORD = list(set(list(stopwords.words("english")) + list(STOPWORDS) + stop1 + stop2 + stop3))
-
+STOP_WORD = list(set(list(stopwords.words("english")) + list(STOPWORDS) + list(STOP_WORDS) + stop1 + stop2 + stop3))
 
 class Documents:
     def __init__(self, stopwrd=None, data_frame=None, text_column=None):
@@ -63,15 +69,14 @@ class Documents:
             self.raw_df = data_frame
             self.processed_df = self.raw_df
         else:
-            raise TypeError(
-                "data_frame should be a dataframe and the text_column should be string")
+            raise TypeError("data_frame should be a dataframe and the text_column should be string")
 
         if str(text_column) in self.raw_df.columns:
-            self.text_column = text_column
+            self.text_column = str(text_column)
         else:
             raise ValueError("Cannot find " +str(text_column) + " in the dataframe.")
 
-    ################## Text Cleaning ##################
+    ################## Lexical Cleaning ##################
     def __flatten(self, listOfLists):
         "Flatten one level of nesting"
         return list(chain.from_iterable(listOfLists))
@@ -207,7 +212,6 @@ class Documents:
         plt.axis("off")
 
     ##################### Exploratory Data Analysis #####################
-
     def explore(self, ngram_range=(1, 1), nwords=20, min_freq=0.05, X_variable=None):
         cleaned_text = str(self.text_column) + "_clean"
         if not self.clean_status:
@@ -289,6 +293,23 @@ class Documents:
         wordcloud = WordCloud(width=400, height=200, random_state=1, background_color='white', colormap='tab10', collocations=False,
                               stopwords=self.stop_words, mask=mask).generate(text)
         self.__plot_cloud(wordcloud)
+    
+    def save_doc(self, dir_name=None, file_name=None):
+        if dir_name is None:
+            dir_name = MODEL_PATH
+        if file_name is None:
+            file_name = "Documents"
+        print("--- Saving Data ---\n")
+        self.model_path = str(dir_name + "/" + file_name.strip() + "/" + str(datetime.now()))
+        pickle.dump(self, self.model_path + "/doc_obj.pk")
+        print("Document object saved at ", self.model_path)
+    
+    @staticmethod
+    def load_doc(model_path):
+        print("--- Loading Data ---\n")
+        doc_obj = pickle.load(model_path + "/doc_obj.pk")
+        return doc_obj
+        
 
 
 

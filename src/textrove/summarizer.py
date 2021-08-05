@@ -16,7 +16,7 @@ tqdm.pandas()
 import warnings
 warnings.filterwarnings("ignore")
 
-nlp = spacy.load('en_core_web_md')
+nlp = spacy.load('en_core_web_trf')
 
 global UTIL_PATH, STOP_WORD
 # with pkg_resources.path('utils', '.') as p:
@@ -35,12 +35,12 @@ stop3 = [re.sub(r"(\|(.)+)|(\n)", "", x.lower()).strip()
 STOP_WORD = list(set(list(stopwords.words("english")) + list(STOPWORDS) + list(STOP_WORDS) + stop1 + stop2 + stop3))
 
 class Summary:
-    def __init__(self, documents_object=None, summary_size=None):
+    def __init__(self, documents_object, summary_size=None):
         if isinstance(documents_object, Documents):
             self.doc_obj = documents_object
             self.raw_df = documents_object.raw_df
             if not (isinstance(summary_size, int) or isinstance(summary_size, float)):
-                raise TypeError("Summary Size has to be either an Interger or fraction less than 1")
+                raise TypeError("Summary Size has to be either an Integer (< total number of sentences) or fraction less than 1")
             else:
                 if summary_size is None:
                     self.summary_size = 0.3

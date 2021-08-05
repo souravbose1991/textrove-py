@@ -27,10 +27,11 @@ global UTIL_PATH
 UTIL_PATH = os.path.abspath(os.path.dirname(utils.__file__))
 
 class Sentiment:
-    def __init__(self, documents_object=None, method=None, lexicon=None):
+    def __init__(self, documents_object, method=None, lexicon=None):
         if isinstance(documents_object, Documents):
             self.doc_obj = documents_object
             self.raw_df = documents_object.raw_df
+            self.stop_words = documents_object.stop_words
             if documents_object.clean_status:
                 self.processed_df = documents_object.processed_df
                 self.text_column = documents_object.text_column

@@ -24,7 +24,7 @@ WWW_PATH = os.path.abspath(os.path.dirname(www.__file__))
 
 
 class WordNetwork:
-    def __init__(self, documents_object=None):
+    def __init__(self, documents_object):
         if isinstance(documents_object, Documents):
             self.doc_obj = documents_object
             self.raw_df = documents_object.raw_df
